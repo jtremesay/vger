@@ -20,10 +20,15 @@ if ! [ $OUT = "bdbb22f0d1f4dd9e31bfc91686e7441d" ] ; then echo "error" ; exit 1 
 
 #### no -d parameter from here
 
-# file from /var/gemini/blog/
-OUT=$(printf "gemini://host.name/blog/\r\n" | ../vger | tee /dev/stderr | md5)
-if ! [ $OUT = "83bd01c9af0e44d5439b9ac95dc28132" ] ; then echo "error" ; exit 1 ; fi
+if [ -d /var/gemini/ ]
+then
 
-# file from /var/gemini/blog
-OUT=$(printf "gemini://host.name/blog\r\n" | ../vger | tee /dev/stderr | md5)
-if ! [ $OUT = "f78c481e1614f1713e077b89aba5ab94" ] ; then echo "error" ; exit 1 ; fi
+    # file from /var/gemini/blog/
+    OUT=$(printf "gemini://host.name/blog/\r\n" | ../vger | tee /dev/stderr | md5)
+    if ! [ $OUT = "83bd01c9af0e44d5439b9ac95dc28132" ] ; then echo "error" ; exit 1 ; fi
+
+    # file from /var/gemini/blog
+    OUT=$(printf "gemini://host.name/blog\r\n" | ../vger | tee /dev/stderr | md5)
+    if ! [ $OUT = "f78c481e1614f1713e077b89aba5ab94" ] ; then echo "error" ; exit 1 ; fi
+
+fi
