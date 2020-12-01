@@ -25,7 +25,7 @@ reading files and reading input/output are allowed.
 # Get the sources
 
 ```
-git clone https://tildegit.org/solene/vger
+git clone https://tildegit.org/solene/vger.git
 ```
 
 # Running tests
