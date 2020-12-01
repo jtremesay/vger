@@ -112,11 +112,13 @@ main(int argc, char **argv)
 	if(strlen(path) == 0)
     		strlcpy(path, DEFAULT_CHROOT, sizeof(DEFAULT_CHROOT));
 
+#ifdef __OpenBSD__
 	if (unveil(path, "r") == -1)
 		err(1, "unveil");
 
 	if (pledge("stdio rpath", NULL) == -1)
 		err(1, "pledge");
+#endif
 
 	/*
 	 * read 1024 chars from stdin
