@@ -1,18 +1,18 @@
 /*
  * Copyright (c) 2020 Solène Rapenne <solene@openbsd.org>
- * 
+ *
  * BSD 2-clause License
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
- * 
+ *
  * * Redistributions of source code must retain the above copyright notice, this
  *   list of conditions and the following disclaimer.
- * 
+ *
  * * Redistributions in binary form must reproduce the above copyright notice,
  *   this list of conditions and the following disclaimer in the documentation
  *   and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
@@ -39,11 +39,11 @@
 #define GEMINI_PART	 9
 #define DEFAULT_CHROOT	"/var/gemini/"
 
-void			 ok_status(void);
-void			 err_status(void);
-void			 display_file(char *);
+void 		ok_status(void);
+void 		err_status(void);
+void 		display_file(char *);
 
-int			 main(int, char **);
+int 		main      (int, char **);
 
 void
 ok_status(void)
@@ -60,19 +60,19 @@ err_status(void)
 void
 display_file(char *path)
 {
-	size_t buflen = BUFF_LEN_1;
-	char *buffer[BUFF_LEN_1];
-	ssize_t nread;
-	struct stat sb;
+	size_t 		buflen = BUFF_LEN_1;
+	char           *buffer[BUFF_LEN_1];
+	ssize_t 	nread;
+	struct stat 	sb;
 
-	// this is to check if path is a directory
-    	stat(path, &sb);
+	/* this is to check if path is a directory */
+	stat(path, &sb);
 
-	FILE *fd = fopen(path, "r");
+	FILE           *fd = fopen(path, "r");
 
 	if (fd != NULL && S_ISDIR(sb.st_mode) != 1) {
 
-        	// check if directory
+		/* check if directory */
 		ok_status();
 
 		/* read the file and write it to stdout */
@@ -92,25 +92,23 @@ display_file(char *path)
 int
 main(int argc, char **argv)
 {
-	char buffer[BUFF_LEN_2];
-	char request[BUFF_LEN_2];
-	char hostname[BUFF_LEN_2];
-	char file[BUFF_LEN_2];
-	char path[BUFF_LEN_2] = "";
-	int option;
-	char *pos;
+	char 		buffer   [BUFF_LEN_2];
+	char 		request  [BUFF_LEN_2];
+	char 		hostname [BUFF_LEN_2];
+	char 		file     [BUFF_LEN_2];
+	char 		path     [BUFF_LEN_2] = "";
+	int 		option;
+	char           *pos;
 
-	while((option = getopt(argc, argv, ":d:")) != -1)
-	{
-    		switch(option)
-    		{
-        		case 'd':
-        			strlcpy(path, optarg, sizeof(path));
-        			break;
-    		}
+	while ((option = getopt(argc, argv, ":d:")) != -1) {
+		switch (option) {
+		case 'd':
+			strlcpy(path, optarg, sizeof(path));
+			break;
+		}
 	}
-	if(strlen(path) == 0)
-    		strlcpy(path, DEFAULT_CHROOT, sizeof(DEFAULT_CHROOT));
+	if (strlen(path) == 0)
+		strlcpy(path, DEFAULT_CHROOT, sizeof(DEFAULT_CHROOT));
 
 #ifdef __OpenBSD__
 	if (unveil(path, "r") == -1)
@@ -128,23 +126,22 @@ main(int argc, char **argv)
 
 	/* remove \r\n at the end of string */
 	pos = strchr(request, '\r');
-	if(pos != NULL)
-        	strlcpy(pos, "\0", 1);
+	if (pos != NULL)
+		strlcpy(pos, "\0", 1);
 
 	/*
 	 * check if the beginning of the request starts with
 	 * gemini://
 	 */
-	int start_with_gemini = strncmp(request, "gemini://", 9);
+	int 		start_with_gemini = strncmp(request, "gemini://", 9);
 
 	/* the request must start with gemini:// */
-	if(start_with_gemini != 0) {
+	if (start_with_gemini != 0) {
 		/* error code url malformed */
 		printf("request «%s» doesn't match gemini:// at index %i",
-		    request, start_with_gemini);
+		       request, start_with_gemini);
 		exit(1);
 	}
-
 	/* remove the gemini:// part */
 	strlcpy(buffer, request + GEMINI_PART, sizeof(buffer) - GEMINI_PART);
 	strlcpy(request, buffer, sizeof(request));
@@ -157,7 +154,7 @@ main(int argc, char **argv)
 
 	if (pos != NULL) {
 		/* if there is a / found */
-		int position = -1;
+		int 		position = -1;
 		for (int i = 0; i < sizeof(request); i++) {
 			if (*pos == request[i]) {
 				position = i;
@@ -170,15 +167,15 @@ main(int argc, char **argv)
 			strlcpy(hostname, request, position);
 			strlcpy(file, request + position + 1, sizeof(request));
 
-			/* use a default file if no file are requested
-                         * this can happen in two cases
-                         * gemini://hostname/
-                         * gemini://hostname/directory/
-                         */
-			if(strlen(file) == 0)
+			/*
+			 * use a default file if no file are requested this
+			 * can happen in two cases gemini://hostname/
+			 * gemini://hostname/directory/
+			 */
+			if (strlen(file) == 0)
 				strlcpy(file, "/index.gmi", 11);
-			if(file[strlen(file)-1] == '/')
-    				strlcat(file, "index.gmi", sizeof(file));
+			if (file[strlen(file) - 1] == '/')
+				strlcat(file, "index.gmi", sizeof(file));
 
 		} else {
 			puts("error undefined");
@@ -199,5 +196,5 @@ main(int argc, char **argv)
 	/* open file and send it to stdout */
 	display_file(path);
 
-	return(0);
+	return (0);
 }
