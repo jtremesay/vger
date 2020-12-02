@@ -97,13 +97,18 @@ main(int argc, char **argv)
 	char 		hostname [BUFF_LEN_2];
 	char 		file     [BUFF_LEN_2];
 	char 		path     [BUFF_LEN_2] = "";
+	int 		virtualhost = 0;
 	int 		option;
+	int 		start_with_gemini;
 	char           *pos;
 
-	while ((option = getopt(argc, argv, ":d:")) != -1) {
+	while ((option = getopt(argc, argv, ":d:v")) != -1) {
 		switch (option) {
 		case 'd':
 			strlcpy(path, optarg, sizeof(path));
+			break;
+		case 'v':
+			virtualhost = 1;
 			break;
 		}
 	}
@@ -133,7 +138,7 @@ main(int argc, char **argv)
 	 * check if the beginning of the request starts with
 	 * gemini://
 	 */
-	int 		start_with_gemini = strncmp(request, "gemini://", 9);
+	start_with_gemini = strncmp(request, "gemini://", 9);
 
 	/* the request must start with gemini:// */
 	if (start_with_gemini != 0) {
@@ -164,7 +169,7 @@ main(int argc, char **argv)
 
 		/* separate hostname and uri */
 		if (position != -1) {
-			strlcpy(hostname, request, position);
+			strlcpy(hostname, request, position + 1);
 			strlcpy(file, request + position + 1, sizeof(request));
 
 			/*
@@ -190,6 +195,15 @@ main(int argc, char **argv)
 		strlcpy(file, "/index.gmi", 11);
 	}
 
+	/*
+	 * if virtualhost feature is actived looking under the default path +
+	 * hostname directory gemini://foobar/hello will look for
+	 * path/foobar/hello
+	 */
+	if (virtualhost) {
+		strlcat(path, hostname, sizeof(path));
+		strlcat(path, "/", sizeof(path));
+	}
 	/* add the base dir to the file requested */
 	strlcat(path, file, sizeof(path));
 

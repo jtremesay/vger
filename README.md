@@ -1,5 +1,7 @@
 # A simplistic and secure Gemini server
 
+**Vger** is a gemini server supporting virtualhosts.
+
 **Vger** design is relying on inetd and a daemon to take care of
 TLS.  The idea is to delegate TLS and network to daemons which
 proved doing it correctly, so vger takes its request from stdin and

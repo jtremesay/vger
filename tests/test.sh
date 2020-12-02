@@ -14,14 +14,23 @@ if ! [ $OUT = "3edd48286850d386592403956aec770f" ] ; then echo "error" ; exit 1 
 OUT=$(printf "gemini://host.name/\r\n" | ../vger -d var/gemini/ | tee /dev/stderr | md5)
 if ! [ $OUT = "3edd48286850d386592403956aec770f" ] ; then echo "error" ; exit 1 ; fi
 
-# file from /var/gemini/index.md
-OUT=$(printf "gemini://host.name/index.md\r\n" | ../vger | tee /dev/stderr | md5)
-if ! [ $OUT = "bdbb22f0d1f4dd9e31bfc91686e7441d" ] ; then echo "error" ; exit 1 ; fi
+# file from local directory using virtualhosts
+OUT=$(printf "gemini://perso.pw/index.gmi\r\n" | ../vger -v -d var/gemini/ | tee /dev/stderr | md5)
+if ! [ $OUT = "0d36a423a4e8be813fda4022f08b3844" ] ; then echo "error" ; exit 1 ; fi
+
+# file from local directory using virtualhosts without specifying a file
+OUT=$(printf "gemini://perso.pw\r\n" | ../vger -v -d var/gemini/ | tee /dev/stderr | md5)
+if ! [ $OUT = "0d36a423a4e8be813fda4022f08b3844" ] ; then echo "error" ; exit 1 ; fi
 
 #### no -d parameter from here
 
 if [ -d /var/gemini/ ]
 then
+
+    # file from /var/gemini/index.md
+    OUT=$(printf "gemini://host.name/index.md\r\n" | ../vger | tee /dev/stderr | md5)
+    if ! [ $OUT = "bdbb22f0d1f4dd9e31bfc91686e7441d" ] ; then echo "error" ; exit 1 ; fi
+
 
     # file from /var/gemini/blog/
     OUT=$(printf "gemini://host.name/blog/\r\n" | ../vger | tee /dev/stderr | md5)
@@ -32,3 +41,5 @@ then
     if ! [ $OUT = "f78c481e1614f1713e077b89aba5ab94" ] ; then echo "error" ; exit 1 ; fi
 
 fi
+
+echo "SUCCESS"
