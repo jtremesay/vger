@@ -32,7 +32,9 @@
 #include <unistd.h>
 #include <err.h>
 #include <errno.h>
+#include "mimes.c"
 
+#define MIME_SIZE	 104
 #define BUFF_LEN_1	 1000
 #define BUFF_LEN_2	 1025
 #define BUFF_LEN_3	 1024
@@ -40,47 +42,73 @@
 #define DEFAULT_LANG	 "en"
 #define DEFAULT_CHROOT	 "/var/gemini/"
 
-void 		status(int, char *);
-void 		display_file(char *, char *);
 
+void 		display_file(const char *, const char *);
+void 		status   (const int, const char *, const char *);
+void 		get_file_mime(const char *, char *, const ssize_t);
 int 		main      (int, char **);
 
+
 void
-status(int code, char *lang)
+status(const int code, const char *file_mime, const char *lang)
 {
-	printf("%i text/gemini; lang=%s\r\n",
-		code, lang);
+	printf("%i %s; lang=%s\r\n",
+	       code, file_mime, lang);
 }
 
+void
+get_file_mime(const char *path, char *type, const ssize_t type_size)
+{
+	struct mimes 	database[MIME_SIZE];
+	struct mimes   *iterator = database;
+	char           *extension;
+
+	make_mime_database(database);
+	extension = strrchr(path, '.');
+
+	/* look for the MIME in the database */
+	for (int i = 0; i < MIME_SIZE; i++, iterator++) {
+		if (strcmp(iterator->extension, extension + 1) == 0) {
+			strlcpy(type, iterator->type, type_size);
+			break;
+		}
+	}
+
+	/* if no MIME have been found, set a default one */
+	if (strlen(type) == 0)
+		strlcpy(type, "text/gemini", type_size);
+}
 
 void
-display_file(char *path, char *lang)
+display_file(const char *path, const char *lang)
 {
 	size_t 		buflen = BUFF_LEN_1;
 	char           *buffer[BUFF_LEN_1];
+	char 		extension[10];
+	char 		file_mime[50];
 	ssize_t 	nread;
 	struct stat 	sb;
+	FILE           *fd;
 
 	/* this is to check if path is a directory */
 	stat(path, &sb);
 
-	FILE           *fd = fopen(path, "r");
+	/* open the file requested */
+	fd = fopen(path, "r");
 
 	if (fd != NULL && S_ISDIR(sb.st_mode) != 1) {
 
+		get_file_mime(path, file_mime, sizeof(file_mime));
+
 		/* check if directory */
-		status(20, lang);
+		status(20, file_mime, lang);
 
 		/* read the file and write it to stdout */
 		while ((nread = fread(buffer, sizeof(char), buflen, fd)) != 0)
 			fwrite(buffer, sizeof(char), nread, stdout);
 		fclose(fd);
 	} else {
-		status(40, lang);
-		/*
-		 * fprintf(stderr, "can't open %s %ld: %s\n", path,strlen(path),
-		 *     strerror(errno));
-		 */
+		status(40, "text/gemini", lang);
 	}
 
 }
@@ -92,8 +120,8 @@ main(int argc, char **argv)
 	char 		request  [BUFF_LEN_2];
 	char 		hostname [BUFF_LEN_2];
 	char 		file     [BUFF_LEN_2];
-	char 		path     [BUFF_LEN_2]   = "";
-	char 		lang	 [3]		= DEFAULT_LANG;
+	char 		path     [BUFF_LEN_2] = DEFAULT_CHROOT;
+	char 		lang     [3] = DEFAULT_LANG;
 	int 		virtualhost = 0;
 	int 		option;
 	int 		start_with_gemini;
@@ -112,13 +140,19 @@ main(int argc, char **argv)
 			break;
 		}
 	}
-	if (strlen(path) == 0)
-		strlcpy(path, DEFAULT_CHROOT, sizeof(DEFAULT_CHROOT));
+
 
 #ifdef __OpenBSD__
+	/*
+	 * prevent access to files other than the one in path
+	 */
 	if (unveil(path, "r") == -1)
 		err(1, "unveil");
 
+	/*
+	 * prevent system calls other than requirement for fread file and
+	 * write to stdio
+	 */
 	if (pledge("stdio rpath", NULL) == -1)
 		err(1, "pledge");
 #endif

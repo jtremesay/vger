@@ -22,6 +22,14 @@ if ! [ $OUT = "3edd48286850d386592403956aec770f" ] ; then echo "error" ; exit 1 
 OUT=$(printf "gemini://host.name/\r\n" | ../vger -d var/gemini/ | tee /dev/stderr | $MD5)
 if ! [ $OUT = "3edd48286850d386592403956aec770f" ] ; then echo "error" ; exit 1 ; fi
 
+# file from local directory with lang=fr and markdown MIME type
+OUT=$(printf "gemini://perso.pw/file.md\r\n" | ../vger -d var/gemini/ -l fr | tee /dev/stderr | $MD5)
+if ! [ $OUT = "e663f17730d5ddc24010c14a238e1e78" ] ; then echo "error" ; exit 1 ; fi
+
+# file from local directory with lang=fr and unknwon MIME type (default to text/gemini)
+OUT=$(printf "gemini://perso.pw/foobar.unknown\r\n" | ../vger -d var/gemini/ -l fr | tee /dev/stderr | $MD5)
+if ! [ $OUT = "649a2e224632b679fd7599eafb13c001" ] ; then echo "error" ; exit 1 ; fi
+
 # file from local directory using virtualhosts
 OUT=$(printf "gemini://perso.pw/index.gmi\r\n" | ../vger -v -d var/gemini/ | tee /dev/stderr | $MD5)
 if ! [ $OUT = "0d36a423a4e8be813fda4022f08b3844" ] ; then echo "error" ; exit 1 ; fi
@@ -41,7 +49,7 @@ then
 
     # file from /var/gemini/index.md
     OUT=$(printf "gemini://host.name/index.md\r\n" | ../vger | tee /dev/stderr | $MD5)
-    if ! [ $OUT = "bdbb22f0d1f4dd9e31bfc91686e7441d" ] ; then echo "error" ; exit 1 ; fi
+    if ! [ $OUT = "1f7ed3966d50b08ea138b7d8c0a08ec6" ] ; then echo "error" ; exit 1 ; fi
 
 
     # file from /var/gemini/blog/
