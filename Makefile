@@ -1,3 +1,8 @@
+PREFIX?=/usr/local/
+
+install: vger
+	install -o root -g wheel vger ${PREFIX}/bin/
+
 all: vger
 
 clean:
