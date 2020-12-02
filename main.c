@@ -37,28 +37,24 @@
 #define BUFF_LEN_2	 1025
 #define BUFF_LEN_3	 1024
 #define GEMINI_PART	 9
-#define DEFAULT_CHROOT	"/var/gemini/"
+#define DEFAULT_LANG	 "en"
+#define DEFAULT_CHROOT	 "/var/gemini/"
 
-void 		ok_status(void);
-void 		err_status(void);
-void 		display_file(char *);
+void 		status(int, char *);
+void 		display_file(char *, char *);
 
 int 		main      (int, char **);
 
 void
-ok_status(void)
+status(int code, char *lang)
 {
-	printf("20 text/gemini; lang=en\r\n");
+	printf("%i text/gemini; lang=%s\r\n",
+		code, lang);
 }
 
-void
-err_status(void)
-{
-	printf("40 text/gemini; lang=en\r\n");
-}
 
 void
-display_file(char *path)
+display_file(char *path, char *lang)
 {
 	size_t 		buflen = BUFF_LEN_1;
 	char           *buffer[BUFF_LEN_1];
@@ -73,14 +69,14 @@ display_file(char *path)
 	if (fd != NULL && S_ISDIR(sb.st_mode) != 1) {
 
 		/* check if directory */
-		ok_status();
+		status(20, lang);
 
 		/* read the file and write it to stdout */
 		while ((nread = fread(buffer, sizeof(char), buflen, fd)) != 0)
 			fwrite(buffer, sizeof(char), nread, stdout);
 		fclose(fd);
 	} else {
-		err_status();
+		status(40, lang);
 		/*
 		 * fprintf(stderr, "can't open %s %ld: %s\n", path,strlen(path),
 		 *     strerror(errno));
@@ -96,19 +92,23 @@ main(int argc, char **argv)
 	char 		request  [BUFF_LEN_2];
 	char 		hostname [BUFF_LEN_2];
 	char 		file     [BUFF_LEN_2];
-	char 		path     [BUFF_LEN_2] = "";
+	char 		path     [BUFF_LEN_2]   = "";
+	char 		lang	 [3]		= DEFAULT_LANG;
 	int 		virtualhost = 0;
 	int 		option;
 	int 		start_with_gemini;
 	char           *pos;
 
-	while ((option = getopt(argc, argv, ":d:v")) != -1) {
+	while ((option = getopt(argc, argv, ":d:l:v")) != -1) {
 		switch (option) {
 		case 'd':
 			strlcpy(path, optarg, sizeof(path));
 			break;
 		case 'v':
 			virtualhost = 1;
+			break;
+		case 'l':
+			strlcpy(lang, optarg, sizeof(lang));
 			break;
 		}
 	}
@@ -208,7 +208,7 @@ main(int argc, char **argv)
 	strlcat(path, file, sizeof(path));
 
 	/* open file and send it to stdout */
-	display_file(path);
+	display_file(path, lang);
 
 	return (0);
 }

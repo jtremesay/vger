@@ -39,6 +39,15 @@ Some files under `/var/gemini/` are required to test the code path
 without a `-d` parameter.
 
 
+# Command line parameters
+
+**Vger**  has a few parameters you can use in inetd configuration.
+
+- `-d PATH`: use `PATH` to look for files. Default is `/var/gemini`
+- `-l LANG`: change the language in the status return code. Default is `en`
+- `-v`: enable virtualhost support, the hostname in the query will be considered as a directory name.
+
+
 # How to configure Vger using relayd and inetd
 
 Create directory `/var/gemini/` (I'd allow this to be configured
