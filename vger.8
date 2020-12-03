@@ -1,0 +1,76 @@
+.Dd $Mdocdate: December 03 2020 $
+.Dt VGER 8
+.Os
+.Sh NAME
+.Nm vger
+.Nd inetd gemini server
+.Sh SYNOPSIS
+.Nm vger
+.Op Fl l Ar lang
+.Op Fl v
+.Op Fl d Ar path
+.Sh DESCRIPTION
+.Nm
+is a secure gemini server that is meant to be run on
+.Xr inetd 8
+behind a relay daemon offering TLS capabilities like
+.Xr relayd 8 .
+.Sh OPTIONS
+.Bl -tag -width Ds
+.It Op Fl l Ar lang
+Set the default lang in the return code to
+.Ar lang
+instead of "en".
+.It Op Fl v
+Enable virtualhost support, the hostname in the query will be considered as a directory name.
+As example, for request gemini://fqdn.local/file.gmi
+.Nm
+will read the file /var/gemini/fqdn.local/file.gmi
+.It Op Fl d Ar path
+Use
+.Ar path
+instead of the default "/var/gemini/" path to look for files.
+On
+.Ox
+.Nm
+will use
+.Xr unveil 2
+on this path in read-only to prevent file access outside this directory.
+.El
+.Sh DEPLOYMENT
+.Nm
+is meant to be run by
+.Xr inetd 8 .
+.Nm
+can be used on any port because it won't be public.
+.Pp
+/etc/inetd.conf example using a dedicated gemini_user:
+.Bd -literal -offset indent
+11965 stream tcp nowait gemini_user /usr/local/bin/vger vger
+.Ed
+.Pp
+The public port TCP/1965 must be served by a daemon like
+.Xr relayd 8
+which negociate TLS connections and forward them
+to the inetd daemon on the
+.Nm
+port.
+.Pp
+.Xr relayd.conf 5
+configuration example:
+.Bd -literal -offset indent
+log connection
+relay "gemini" {
+    listen on 163.172.223.238 port 1965 tls
+    forward to 127.0.0.1 port 11965
+}
+.Ed
+.Sh SEE ALSO
+.Xr unveil 2 ,
+.Xr relayd.conf 5 ,
+.Xr inetd 8 ,
+.Xr relayd 8
+.Sh AUTHORS
+.An See the LICENSE file for the authors .
+.Sh LICENSE
+See the LICENSE file for the terms of redistribution.
