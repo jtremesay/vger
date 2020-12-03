@@ -1,10 +1,11 @@
-#include <sys/stat.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
 #include <err.h>
 #include <errno.h>
+#include <pwd.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/stat.h>
+#include <unistd.h>
 #include "mimes.c"
 
 #define BUFF_LEN_1	 1000
@@ -92,12 +93,14 @@ main(int argc, char **argv)
 	char 		file     [BUFF_LEN_2];
 	char 		path     [BUFF_LEN_2] = DEFAULT_CHROOT;
 	char 		lang     [3] = DEFAULT_LANG;
+	char 		user     [_SC_LOGIN_NAME_MAX];
+	struct passwd  *pw;
 	int 		virtualhost = 0;
 	int 		option;
 	int 		start_with_gemini;
 	char           *pos;
 
-	while ((option = getopt(argc, argv, ":d:l:v")) != -1) {
+	while ((option = getopt(argc, argv, ":d:l:u:v")) != -1) {
 		switch (option) {
 		case 'd':
 			strlcpy(path, optarg, sizeof(path));
@@ -108,10 +111,33 @@ main(int argc, char **argv)
 		case 'l':
 			strlcpy(lang, optarg, sizeof(lang));
 			break;
+		case 'u':
+			strlcpy(user, optarg, sizeof(user));
+			break;
 		}
 	}
 
+	/*
+	 * use chroot() if an user is specified requires root user to be
+	 * running the program to run chroot() and then drop privileges
+	 */
+	if (strlen(user) > 0) {
+		/* is root? */
+		if (getuid() != 0)
+			err(1, "chroot requires root user");
 
+		/* search user uid from name */
+		if ((pw = getpwnam(user)) == NULL)
+			err(1, "finding user");
+
+		/* chroot worked? */
+		if (chroot(path) != 0)
+			err(1, "chroot");
+
+		/* drop privileges */
+		if (setuid(pw->pw_uid) != 0)
+			err(1, "Can't drop privileges");
+	}
 #ifdef __OpenBSD__
 	/*
 	 * prevent access to files other than the one in path

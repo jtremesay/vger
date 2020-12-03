@@ -42,6 +42,13 @@ if ! [ $OUT = "0d36a423a4e8be813fda4022f08b3844" ] ; then echo "error" ; exit 1 
 OUT=$(printf "gemini://perso.pw\r\n" | ../vger -v -d var/gemini/ -l fr | tee /dev/stderr | $MD5)
 if ! [ $OUT = "7db981ce93fee268f29324912800f00d" ] ; then echo "error" ; exit 1 ; fi
 
+type doas 2>/dev/null
+if [ $? -eq 0 ]; then
+    # file from local directory chroot
+    OUT=$(printf "gemini://perso.pw\r\n" | doas ../vger -v -d var/gemini/ -u solene -l fr | tee /dev/stderr | $MD5)
+    if ! [ $OUT = "7db981ce93fee268f29324912800f00d" ] ; then echo "error" ; exit 1 ; fi
+fi
+
 #### no -d parameter from here
 
 if [ -d /var/gemini/ ]

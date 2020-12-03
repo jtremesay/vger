@@ -9,6 +9,7 @@
 .Op Fl l Ar lang
 .Op Fl v
 .Op Fl d Ar path
+.Op Fl u Ar username
 .Sh DESCRIPTION
 .Nm
 is a secure gemini server that is meant to be run on
@@ -40,6 +41,14 @@ On
 will use
 .Xr unveil 2
 on this path in read-only to prevent file access outside this directory.
+.It Op Fl u Ar username
+Enable
+.Xr chroot 2
+on the data directory and then drop privileges to
+.Ar username .
+This requires
+.Nm
+to be run as root user.
 .El
 .Sh DEPLOYMENT
 .Nm
@@ -70,6 +79,7 @@ relay "gemini" {
 }
 .Ed
 .Sh SEE ALSO
+.Xr chroot 2 ,
 .Xr unveil 2 ,
 .Xr relayd.conf 5 ,
 .Xr inetd 8 ,

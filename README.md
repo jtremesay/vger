@@ -1,7 +1,7 @@
 # A simplistic and secure Gemini server
 
-**Vger** is a gemini server supporting virtualhosts, default language
-choice and MIME types detection.
+**Vger** is a gemini server supporting chroot, virtualhosts, default
+language choice and MIME types detection.
 
 **Vger** design is relying on inetd and a daemon to take care of
 TLS.  The idea is to delegate TLS and network to daemons which
@@ -43,9 +43,10 @@ without a `-d` parameter.
 
 **Vger**  has a few parameters you can use in inetd configuration.
 
-- `-d PATH`: use `PATH` to look for files. Default is `/var/gemini`
+- `-d PATH`: use `PATH` as the data directory to serve files from. Default is `/var/gemini`
 - `-l LANG`: change the language in the status return code. Default is `en`
 - `-v`: enable virtualhost support, the hostname in the query will be considered as a directory name.
+- `-u username`: enable chroot to the data directory and drop privileges to `username`.
 
 
 # How to configure Vger using relayd and inetd
