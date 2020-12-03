@@ -3,7 +3,7 @@ PREFIX?=/usr/local/
 all: vger
 
 clean:
-	rm vger
+	rm -f vger *.core
 	
 vger: main.c
 	${CC} -o vger main.c
