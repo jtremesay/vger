@@ -15,6 +15,10 @@ is a secure gemini server that is meant to be run on
 .Xr inetd 8
 behind a relay daemon offering TLS capabilities like
 .Xr relayd 8 .
+.Pp
+If an incoming gemini query doesn't explicitly request a file,
+.Nm
+will serves a default "index.gmi" file if present.
 .Sh OPTIONS
 .Bl -tag -width Ds
 .It Op Fl l Ar lang
