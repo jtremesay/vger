@@ -34,7 +34,6 @@ git clone https://tildegit.org/solene/vger.git
 # Running tests
 
 **Vger** comes with a test suite you can use with `make test`.
-It currently expects `md5` command to be available.
 
 Some files under `/var/gemini/` are required to test the code path
 without a `-d` parameter.
@@ -64,15 +63,15 @@ Add this to relayd.conf
 ```
 log connection
 relay "gemini" {
-    listen on 163.172.223.238 port 1965 tls
+    listen on hostname.example port 1965 tls
     forward to 127.0.0.1 port 11965
 }
 ```
 
 Make links to the certificates and key files according to relayd.conf documentation
 ```
-# ln -s /etc/ssl/acme/cert.pem /etc/ssl/163.172.223.238\:1965.crt
-# ln -s /etc/ssl/acme/private/privkey.pem /etc/ssl/private/163.172.223.238\:1965.key
+# ln -s /etc/ssl/acme/cert.pem /etc/ssl/hostname.example\:1965.crt
+# ln -s /etc/ssl/acme/private/privkey.pem /etc/ssl/private/hostname.example\:1965.key
 ```
 
 Enable inetd and relayd and start them:
