@@ -34,7 +34,6 @@
 #include <errno.h>
 #include "mimes.c"
 
-#define MIME_SIZE	 104
 #define BUFF_LEN_1	 1000
 #define BUFF_LEN_2	 1025
 #define BUFF_LEN_3	 1024
@@ -59,15 +58,13 @@ status(const int code, const char *file_mime, const char *lang)
 void
 get_file_mime(const char *path, char *type, const ssize_t type_size)
 {
-	struct mimes 	database[MIME_SIZE];
 	struct mimes   *iterator = database;
 	char           *extension;
 
-	make_mime_database(database);
 	extension = strrchr(path, '.');
 
 	/* look for the MIME in the database */
-	for (int i = 0; i < MIME_SIZE; i++, iterator++) {
+	for (int i = 0; i < sizeof(database) / sizeof(struct mimes); i++, iterator++) {
 		if (strcmp(iterator->extension, extension + 1) == 0) {
 			strlcpy(type, iterator->type, type_size);
 			break;
