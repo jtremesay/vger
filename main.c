@@ -32,15 +32,14 @@ status(const int code, const char *file_mime, const char *lang)
 void
 get_file_mime(const char *path, char *type, const ssize_t type_size)
 {
-	struct mimes   *iterator = database;
 	char           *extension;
 
 	extension = strrchr(path, '.');
 
 	/* look for the MIME in the database */
-	for (int i = 0; i < sizeof(database) / sizeof(struct mimes); i++, iterator++) {
-		if (strcmp(iterator->extension, extension + 1) == 0) {
-			strlcpy(type, iterator->type, type_size);
+	for (int i = 0; i < sizeof(database) / sizeof(struct mimes); i++) {
+		if (strcmp(database[i].extension, extension + 1) == 0) {
+			strlcpy(type, database[i].type, type_size);
 			break;
 		}
 	}
@@ -79,6 +78,7 @@ display_file(const char *path, const char *lang)
 			fwrite(buffer, sizeof(char), nread, stdout);
 		fclose(fd);
 	} else {
+		/* return an error code and no content */
 		status(40, "text/gemini", lang);
 	}
 
@@ -94,10 +94,10 @@ main(int argc, char **argv)
 	char 		path     [BUFF_LEN_2] = DEFAULT_CHROOT;
 	char 		lang     [3] = DEFAULT_LANG;
 	char 		user     [_SC_LOGIN_NAME_MAX];
-	struct passwd  *pw;
 	int 		virtualhost = 0;
 	int 		option;
 	int 		start_with_gemini;
+	struct passwd  *pw;
 	char           *pos;
 
 	while ((option = getopt(argc, argv, ":d:l:u:v")) != -1) {
