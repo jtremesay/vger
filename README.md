@@ -82,7 +82,4 @@ Enable inetd and relayd and start them:
 
 # Todo
 
-- handle MIME correctly (only output text/gemini currently)
-- move things out of main()
 - add syslog traces
-- write a man page
