@@ -84,4 +84,3 @@ Enable inetd and relayd and start them:
 # Todo
 
 - add syslog traces
-- maybe a chroot() for non OpenBSD systems.
