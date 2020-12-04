@@ -48,8 +48,14 @@ drop_privileges(const char *user, const char *path)
 			syslog(LOG_DAEMON, "the path %s can't be used for chroot", path);
 			err(1, "chroot");
 		}
+		if (chdir("/") == -1) {
+			syslog(LOG_DAEMON, "failed to chdir(\"/\")");
+			err(1, "chdir");
+		}
 		/* drop privileges */
-		if (setuid(pw->pw_uid) != 0) {
+		if (setgroups(1, &pw->pw_gid) ||
+		    setresgid(pw->pw_gid, pw->pw_gid, pw->pw_gid) ||
+		    setresuid(pw->pw_uid, pw->pw_uid, pw->pw_uid)) {
 			syslog(LOG_DAEMON, "dropping privileges to user %s (uid=%i) failed",
 			       user, pw->pw_uid);
 			err(1, "Can't drop privileges");
