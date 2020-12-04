@@ -36,7 +36,7 @@ drop_privileges(const char *user, const char *path)
 		/* is root? */
 		if (getuid() != 0) {
 			syslog(LOG_DAEMON, "chroot requires program to be run as root");
-			err(1, "chroot requires root user");
+			errx(1, "chroot requires root user");
 		}
 		/* search user uid from name */
 		if ((pw = getpwnam(user)) == NULL) {
