@@ -23,9 +23,6 @@ void 		display_file(const char *, const char *);
 void 		status   (const int, const char *, const char *);
 void 		drop_privileges(const char *, const char *);
 
-int 		main      (int, char **);
-
-
 void
 drop_privileges(const char *user, const char *path)
 {
