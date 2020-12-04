@@ -100,29 +100,32 @@ display_file(const char *path, const char *lang)
 	FILE           *fd;
 
 	/* this is to check if path is a directory */
-	stat(path, &sb);
+	if (stat(path, &sb) == -1)
+		goto err;
 
 	/* open the file requested */
-	fd = fopen(path, "r");
+	if ((fd = fopen(path, "r")) == NULL)
+		goto err;
 
-	if (fd != NULL && S_ISDIR(sb.st_mode) != 1) {
+	/* check if directory */
+	if (S_ISDIR(sb.st_mode) == 1)
+		goto err;
 
-		get_file_mime(path, file_mime, sizeof(file_mime));
+	get_file_mime(path, file_mime, sizeof(file_mime));
 
-		/* check if directory */
-		status(20, file_mime, lang);
+	status(20, file_mime, lang);
 
-		/* read the file and write it to stdout */
-		while ((nread = fread(buffer, sizeof(char), buflen, fd)) != 0)
-			fwrite(buffer, sizeof(char), nread, stdout);
-		fclose(fd);
-		syslog(LOG_DAEMON, "path served %s", path);
-	} else {
-		/* return an error code and no content */
-		status(40, "text/gemini", lang);
-		syslog(LOG_DAEMON, "path invalid %s", path);
-	}
+	/* read the file and write it to stdout */
+	while ((nread = fread(buffer, sizeof(char), buflen, fd)) != 0)
+		fwrite(buffer, sizeof(char), nread, stdout);
+	fclose(fd);
+	syslog(LOG_DAEMON, "path served %s", path);
 
+	return;
+ err:
+	/* return an error code and no content */
+	status(40, "text/gemini", lang);
+	syslog(LOG_DAEMON, "path invalid %s", path);
 }
 
 int
