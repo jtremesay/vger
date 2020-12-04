@@ -80,7 +80,3 @@ Enable inetd and relayd and start them:
 # rcctl enable relayd inetd
 # rcctl start relayd inetd
 ```
-
-# Todo
-
-- add syslog traces

@@ -1,10 +1,12 @@
 #include <err.h>
 #include <errno.h>
 #include <pwd.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <syslog.h>
 #include <unistd.h>
 #include "mimes.c"
 
@@ -19,6 +21,7 @@
 void 		display_file(const char *, const char *);
 void 		status   (const int, const char *, const char *);
 void 		get_file_mime(const char *, char *, const ssize_t);
+
 int 		main      (int, char **);
 
 
@@ -77,9 +80,11 @@ display_file(const char *path, const char *lang)
 		while ((nread = fread(buffer, sizeof(char), buflen, fd)) != 0)
 			fwrite(buffer, sizeof(char), nread, stdout);
 		fclose(fd);
+		syslog(LOG_DAEMON, "path served %s", path);
 	} else {
 		/* return an error code and no content */
 		status(40, "text/gemini", lang);
+		syslog(LOG_DAEMON, "path invalid %s", path);
 	}
 
 }
@@ -123,34 +128,43 @@ main(int argc, char **argv)
 	 */
 	if (strlen(user) > 0) {
 		/* is root? */
-		if (getuid() != 0)
+		if (getuid() != 0) {
+			syslog(LOG_DAEMON, "chroot requires %s to be run as root", argv[0]);
 			err(1, "chroot requires root user");
-
+		}
 		/* search user uid from name */
-		if ((pw = getpwnam(user)) == NULL)
+		if ((pw = getpwnam(user)) == NULL) {
+			syslog(LOG_DAEMON, "the user %s can't be found on the system", user);
 			err(1, "finding user");
-
+		}
 		/* chroot worked? */
-		if (chroot(path) != 0)
+		if (chroot(path) != 0) {
+			syslog(LOG_DAEMON, "the path %s can't be used for chroot", path);
 			err(1, "chroot");
-
+		}
 		/* drop privileges */
-		if (setuid(pw->pw_uid) != 0)
+		if (setuid(pw->pw_uid) != 0) {
+			syslog(LOG_DAEMON, "dropping privileges to user %s (uid=%i) failed",
+			       user, pw->pw_uid);
 			err(1, "Can't drop privileges");
+		}
 	}
 #ifdef __OpenBSD__
 	/*
 	 * prevent access to files other than the one in path
 	 */
-	if (unveil(path, "r") == -1)
+	if (unveil(path, "r") == -1) {
+		syslog(LOG_DAEMON, "unveil on %s failed", path);
 		err(1, "unveil");
-
+	}
 	/*
-	 * prevent system calls other than requirement for fread file and
+	 * prevent system calls other parsing queryfor fread file and
 	 * write to stdio
 	 */
-	if (pledge("stdio rpath", NULL) == -1)
+	if (pledge("stdio rpath", NULL) == -1) {
+		syslog(LOG_DAEMON, "pledge call failed");
 		err(1, "pledge");
+	}
 #endif
 
 	/*
@@ -162,7 +176,7 @@ main(int argc, char **argv)
 	/* remove \r\n at the end of string */
 	pos = strchr(request, '\r');
 	if (pos != NULL)
-		strlcpy(pos, "\0", 1);
+		*pos = '\0';
 
 	/*
 	 * check if the beginning of the request starts with
@@ -173,10 +187,12 @@ main(int argc, char **argv)
 	/* the request must start with gemini:// */
 	if (start_with_gemini != 0) {
 		/* error code url malformed */
-		printf("request «%s» doesn't match gemini:// at index %i",
+		syslog(LOG_DAEMON, "request «%s» doesn't match gemini:// at index %i",
 		       request, start_with_gemini);
 		exit(1);
 	}
+	syslog(LOG_DAEMON, "request %s", request);
+
 	/* remove the gemini:// part */
 	strlcpy(buffer, request + GEMINI_PART, sizeof(buffer) - GEMINI_PART);
 	strlcpy(request, buffer, sizeof(request));
@@ -213,7 +229,7 @@ main(int argc, char **argv)
 				strlcat(file, "index.gmi", sizeof(file));
 
 		} else {
-			puts("error undefined");
+			syslog(LOG_DAEMON, "unknown situation after parsing query");
 			exit(2);
 		}
 	} else {
