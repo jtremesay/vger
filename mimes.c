@@ -1,9 +1,14 @@
 #include <string.h>
+#include <unistd.h>
+#include <string.h>
+
+void 		get_file_mime(const char *, char *, const ssize_t);
 
 struct mimes {
 	char 		extension[10];
 	char 		type     [70];
 };
+
 
 struct mimes 	database[] = {
 	{"7z", "application/x-7z-compressed"},
@@ -110,3 +115,23 @@ struct mimes 	database[] = {
 	{"xpi", "application/x-xpinstall"},
 	{"zip", "application/zip"}
 };
+
+void
+get_file_mime(const char *path, char *type, const ssize_t type_size)
+{
+	char           *extension;
+
+	extension = strrchr(path, '.');
+
+	/* look for the MIME in the database */
+	for (int i = 0; i < sizeof(database) / sizeof(struct mimes); i++) {
+		if (strcmp(database[i].extension, extension + 1) == 0) {
+			strlcpy(type, database[i].type, type_size);
+			break;
+		}
+	}
+
+	/* if no MIME have been found, set a default one */
+	if (strlen(type) == 0)
+		strlcpy(type, "text/gemini", type_size);
+}

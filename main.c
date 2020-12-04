@@ -21,35 +21,67 @@
 void 		display_file(const char *, const char *);
 void 		status   (const int, const char *, const char *);
 void 		get_file_mime(const char *, char *, const ssize_t);
+void 		drop_privileges(const char *, const char *);
 
 int 		main      (int, char **);
 
+
+void
+drop_privileges(const char *user, const char *path)
+{
+	struct passwd  *pw;
+	/*
+	 * use chroot() if an user is specified requires root user to be
+	 * running the program to run chroot() and then drop privileges
+	 */
+	if (strlen(user) > 0) {
+		/* is root? */
+		if (getuid() != 0) {
+			syslog(LOG_DAEMON, "chroot requires program to be run as root");
+			err(1, "chroot requires root user");
+		}
+		/* search user uid from name */
+		if ((pw = getpwnam(user)) == NULL) {
+			syslog(LOG_DAEMON, "the user %s can't be found on the system", user);
+			err(1, "finding user");
+		}
+		/* chroot worked? */
+		if (chroot(path) != 0) {
+			syslog(LOG_DAEMON, "the path %s can't be used for chroot", path);
+			err(1, "chroot");
+		}
+		/* drop privileges */
+		if (setuid(pw->pw_uid) != 0) {
+			syslog(LOG_DAEMON, "dropping privileges to user %s (uid=%i) failed",
+			       user, pw->pw_uid);
+			err(1, "Can't drop privileges");
+		}
+	}
+#ifdef __OpenBSD__
+	/*
+	 * prevent access to files other than the one in path
+	 */
+	if (unveil(path, "r") == -1) {
+		syslog(LOG_DAEMON, "unveil on %s failed", path);
+		err(1, "unveil");
+	}
+	/*
+	 * prevent system calls other parsing queryfor fread file and
+	 * write to stdio
+	 */
+	if (pledge("stdio rpath", NULL) == -1) {
+		syslog(LOG_DAEMON, "pledge call failed");
+		err(1, "pledge");
+	}
+#endif
+
+}
 
 void
 status(const int code, const char *file_mime, const char *lang)
 {
 	printf("%i %s; lang=%s\r\n",
 	       code, file_mime, lang);
-}
-
-void
-get_file_mime(const char *path, char *type, const ssize_t type_size)
-{
-	char           *extension;
-
-	extension = strrchr(path, '.');
-
-	/* look for the MIME in the database */
-	for (int i = 0; i < sizeof(database) / sizeof(struct mimes); i++) {
-		if (strcmp(database[i].extension, extension + 1) == 0) {
-			strlcpy(type, database[i].type, type_size);
-			break;
-		}
-	}
-
-	/* if no MIME have been found, set a default one */
-	if (strlen(type) == 0)
-		strlcpy(type, "text/gemini", type_size);
 }
 
 void
@@ -102,7 +134,6 @@ main(int argc, char **argv)
 	int 		virtualhost = 0;
 	int 		option;
 	int 		start_with_gemini;
-	struct passwd  *pw;
 	char           *pos;
 
 	while ((option = getopt(argc, argv, ":d:l:u:v")) != -1) {
@@ -123,49 +154,9 @@ main(int argc, char **argv)
 	}
 
 	/*
-	 * use chroot() if an user is specified requires root user to be
-	 * running the program to run chroot() and then drop privileges
+	 * do chroot if an user is supplied run pledge/unveil if OpenBSD
 	 */
-	if (strlen(user) > 0) {
-		/* is root? */
-		if (getuid() != 0) {
-			syslog(LOG_DAEMON, "chroot requires %s to be run as root", argv[0]);
-			err(1, "chroot requires root user");
-		}
-		/* search user uid from name */
-		if ((pw = getpwnam(user)) == NULL) {
-			syslog(LOG_DAEMON, "the user %s can't be found on the system", user);
-			err(1, "finding user");
-		}
-		/* chroot worked? */
-		if (chroot(path) != 0) {
-			syslog(LOG_DAEMON, "the path %s can't be used for chroot", path);
-			err(1, "chroot");
-		}
-		/* drop privileges */
-		if (setuid(pw->pw_uid) != 0) {
-			syslog(LOG_DAEMON, "dropping privileges to user %s (uid=%i) failed",
-			       user, pw->pw_uid);
-			err(1, "Can't drop privileges");
-		}
-	}
-#ifdef __OpenBSD__
-	/*
-	 * prevent access to files other than the one in path
-	 */
-	if (unveil(path, "r") == -1) {
-		syslog(LOG_DAEMON, "unveil on %s failed", path);
-		err(1, "unveil");
-	}
-	/*
-	 * prevent system calls other parsing queryfor fread file and
-	 * write to stdio
-	 */
-	if (pledge("stdio rpath", NULL) == -1) {
-		syslog(LOG_DAEMON, "pledge call failed");
-		err(1, "pledge");
-	}
-#endif
+	drop_privileges(user, path);
 
 	/*
 	 * read 1024 chars from stdin
