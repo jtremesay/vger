@@ -8,7 +8,8 @@
 #include <sys/stat.h>
 #include <syslog.h>
 #include <unistd.h>
-#include "mimes.c"
+
+#include "mimes.h"
 
 #define BUFF_LEN_1	 1000
 #define BUFF_LEN_2	 1025
@@ -20,7 +21,6 @@
 
 void 		display_file(const char *, const char *);
 void 		status   (const int, const char *, const char *);
-void 		get_file_mime(const char *, char *, const ssize_t);
 void 		drop_privileges(const char *, const char *);
 
 int 		main      (int, char **);

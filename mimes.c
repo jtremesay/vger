@@ -2,7 +2,7 @@
 #include <unistd.h>
 #include <string.h>
 
-void 		get_file_mime(const char *, char *, const ssize_t);
+#include "mimes.h"
 
 struct mimes {
 	char 		extension[10];

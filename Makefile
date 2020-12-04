@@ -3,11 +3,11 @@ PREFIX?=/usr/local/
 all: vger
 
 clean:
-	rm -f vger *.core
-	
-vger: main.c
-	${CC} -o vger main.c
-	
+	rm -f vger *.core *.o
+
+vger: main.o mimes.o
+	${CC} -o vger main.o mimes.o
+
 install: vger
 	install -o root -g wheel vger ${PREFIX}/bin/
 	install -o root -g wheel vger.8 ${PREFIX}/man/man8/
