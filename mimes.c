@@ -4,13 +4,10 @@
 
 #include "mimes.h"
 
-struct mimes {
-	char 		extension[10];
-	char 		type     [70];
-};
-
-
-struct mimes 	database[] = {
+static const struct {
+	const char	*extension;
+	const char	*type;
+} database[] = {
 	{"7z", "application/x-7z-compressed"},
 	{"atom", "application/atom+xml"},
 	{"avi", "video/x-msvideo"},
@@ -116,15 +113,20 @@ struct mimes 	database[] = {
 	{"zip", "application/zip"}
 };
 
+#ifndef nitems
+#define nitems(_a) (sizeof((_a)) / sizeof((_a)[0]))
+#endif
+
 void
 get_file_mime(const char *path, char *type, const ssize_t type_size)
 {
-	char           *extension;
+	int	 i;
+	char	*extension;
 
 	extension = strrchr(path, '.');
 
 	/* look for the MIME in the database */
-	for (int i = 0; i < sizeof(database) / sizeof(struct mimes); i++) {
+	for (i = 0; i < nitems(database); i++) {
 		if (strcmp(database[i].extension, extension + 1) == 0) {
 			strlcpy(type, database[i].type, type_size);
 			break;
