@@ -1,1 +1,1 @@
-void 		get_file_mime(const char *, char *, const ssize_t);
+const char	*get_file_mime(const char *);

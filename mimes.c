@@ -117,23 +117,22 @@ static const struct {
 #define nitems(_a) (sizeof((_a)) / sizeof((_a)[0]))
 #endif
 
-void
-get_file_mime(const char *path, char *type, const ssize_t type_size)
+const char *
+get_file_mime(const char *path)
 {
 	int	 i;
 	char	*extension;
 
-	extension = strrchr(path, '.');
+	if ((extension = strrchr(path, '.')) == NULL)
+		goto out;
 
 	/* look for the MIME in the database */
 	for (i = 0; i < nitems(database); i++) {
-		if (strcmp(database[i].extension, extension + 1) == 0) {
-			strlcpy(type, database[i].type, type_size);
-			break;
-		}
+		if (strcmp(database[i].extension, extension + 1) == 0)
+			return (database[i].type);
 	}
 
+ out:
 	/* if no MIME have been found, set a default one */
-	if (strlen(type) == 0)
-		strlcpy(type, "text/gemini", type_size);
+	return ("text/gemini");
 }

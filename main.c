@@ -97,13 +97,13 @@ status(const int code, const char *file_mime, const char *lang)
 void
 display_file(const char *path, const char *lang)
 {
-	size_t 		buflen = BUFF_LEN_1;
-	char           *buffer[BUFF_LEN_1];
-	char 		extension[10];
-	char 		file_mime[50] = "";
-	ssize_t 	nread;
-	struct stat 	sb;
-	FILE           *fd;
+	FILE		*fd;
+	struct stat	 sb;
+	ssize_t		 nread;
+	size_t		 buflen = BUFF_LEN_1;
+	char		*buffer[BUFF_LEN_1];
+	char		 extension[10];
+	const char	*file_mime;
 
 	/* this is to check if path is a directory */
 	if (stat(path, &sb) == -1)
@@ -117,7 +117,7 @@ display_file(const char *path, const char *lang)
 	if (S_ISDIR(sb.st_mode) == 1)
 		goto err;
 
-	get_file_mime(path, file_mime, sizeof(file_mime));
+	file_mime = get_file_mime(path);
 
 	status(20, file_mime, lang);
 
