@@ -24,11 +24,17 @@ the filesystem access is restricted to one directory (default to
 `/var/gemini/`) and with `pledge()` only systems calls related to
 reading files and reading input/output are allowed.
 
+For all supported OS, it's possible to run **Vger** in a chroot
+and drop privileges to a dedicated user.
 
-# Get the sources
+
+# Install
 
 ```
 git clone https://tildegit.org/solene/vger.git
+cd vger
+make
+sudo make install
 ```
 
 # Running tests
@@ -75,7 +81,7 @@ Make links to the certificates and key files according to relayd.conf documentat
 # ln -s /etc/ssl/acme/private/privkey.pem /etc/ssl/private/hostname.example\:1965.key
 ```
 
-Enable inetd and relayd and start them:
+On OpenBSD, enable inetd and relayd and start them:
 ```
 # rcctl enable relayd inetd
 # rcctl start relayd inetd
