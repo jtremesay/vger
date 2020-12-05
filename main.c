@@ -28,11 +28,16 @@ void
 drop_privileges(const char *user, const char *path)
 {
 	struct passwd  *pw;
+	char 		chroot_dir[BUFF_LEN_2];
+
+	strlcpy(chroot_dir, path, sizeof(chroot_dir));
+
 	/*
 	 * use chroot() if an user is specified requires root user to be
 	 * running the program to run chroot() and then drop privileges
 	 */
 	if (strlen(user) > 0) {
+
 		/* is root? */
 		if (getuid() != 0) {
 			syslog(LOG_DAEMON, "chroot requires program to be run as root");
@@ -44,8 +49,8 @@ drop_privileges(const char *user, const char *path)
 			err(1, "finding user");
 		}
 		/* chroot worked? */
-		if (chroot(path) != 0) {
-			syslog(LOG_DAEMON, "the path %s can't be used for chroot", path);
+		if (chroot(chroot_dir) != 0) {
+			syslog(LOG_DAEMON, "the chroot_dir %s can't be used for chroot", chroot_dir);
 			err(1, "chroot");
 		}
 		if (chdir("/") == -1) {
@@ -60,13 +65,14 @@ drop_privileges(const char *user, const char *path)
 			       user, pw->pw_uid);
 			err(1, "Can't drop privileges");
 		}
+		strlcpy(chroot_dir, "/", sizeof(chroot_dir));
 	}
 #ifdef __OpenBSD__
 	/*
-	 * prevent access to files other than the one in path
-	 */
-	if (unveil(path, "r") == -1) {
-		syslog(LOG_DAEMON, "unveil on %s failed", path);
+    	 * prevent access to files other than the one in path
+    	 */
+	if (unveil(chroot_dir, "r") == -1) {
+		syslog(LOG_DAEMON, "unveil on %s failed", chroot_dir);
 		err(1, "unveil");
 	}
 	/*
@@ -94,7 +100,7 @@ display_file(const char *path, const char *lang)
 	size_t 		buflen = BUFF_LEN_1;
 	char           *buffer[BUFF_LEN_1];
 	char 		extension[10];
-	char 		file_mime[50];
+	char 		file_mime[50] = "";
 	ssize_t 	nread;
 	struct stat 	sb;
 	FILE           *fd;
@@ -122,7 +128,7 @@ display_file(const char *path, const char *lang)
 	syslog(LOG_DAEMON, "path served %s", path);
 
 	return;
- err:
+err:
 	/* return an error code and no content */
 	status(40, "text/gemini", lang);
 	syslog(LOG_DAEMON, "path invalid %s", path);
@@ -137,9 +143,10 @@ main(int argc, char **argv)
 	char 		file     [BUFF_LEN_2];
 	char 		path     [BUFF_LEN_2] = DEFAULT_CHROOT;
 	char 		lang     [3] = DEFAULT_LANG;
-	char 		user     [_SC_LOGIN_NAME_MAX];
+	char 		user     [_SC_LOGIN_NAME_MAX] = "";
 	int 		virtualhost = 0;
 	int 		option;
+	int 		chroot = 0;
 	int 		start_with_gemini;
 	char           *pos;
 
@@ -156,6 +163,7 @@ main(int argc, char **argv)
 			break;
 		case 'u':
 			strlcpy(user, optarg, sizeof(user));
+			chroot = 1;
 			break;
 		}
 	}
@@ -164,6 +172,10 @@ main(int argc, char **argv)
 	 * do chroot if an user is supplied run pledge/unveil if OpenBSD
 	 */
 	drop_privileges(user, path);
+
+	/* change basedir to / to build the filepath if we use chroot */
+	if (chroot == 1)
+		strlcpy(path, "/", sizeof(path));
 
 	/*
 	 * read 1024 chars from stdin
