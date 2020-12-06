@@ -12,7 +12,6 @@
 
 #include "mimes.h"
 
-#define BUFF_LEN_1	 1000
 #define BUFF_LEN_2	 1025
 #define BUFF_LEN_3	 1024
 #define GEMINI_PART	 9
@@ -100,8 +99,7 @@ display_file(const char *path, const char *lang)
 	FILE		*fd;
 	struct stat	 sb;
 	ssize_t		 nread;
-	size_t		 buflen = BUFF_LEN_1;
-	char		*buffer[BUFF_LEN_1];
+	char		*buffer[BUFSIZ];
 	char		 extension[10];
 	const char	*file_mime;
 
@@ -122,7 +120,7 @@ display_file(const char *path, const char *lang)
 	status(20, file_mime, lang);
 
 	/* read the file and write it to stdout */
-	while ((nread = fread(buffer, sizeof(char), buflen, fd)) != 0)
+	while ((nread = fread(buffer, sizeof(char), sizeof(buffer), fd)) != 0)
 		fwrite(buffer, sizeof(char), nread, stdout);
 	fclose(fd);
 	syslog(LOG_DAEMON, "path served %s", path);
