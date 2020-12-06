@@ -27,9 +27,6 @@ void
 drop_privileges(const char *user, const char *path)
 {
 	struct passwd  *pw;
-	char 		chroot_dir[BUFF_LEN_2];
-
-	strlcpy(chroot_dir, path, sizeof(chroot_dir));
 
 	/*
 	 * use chroot() if an user is specified requires root user to be
@@ -48,8 +45,8 @@ drop_privileges(const char *user, const char *path)
 			err(1, "finding user");
 		}
 		/* chroot worked? */
-		if (chroot(chroot_dir) != 0) {
-			syslog(LOG_DAEMON, "the chroot_dir %s can't be used for chroot", chroot_dir);
+		if (chroot(path) != 0) {
+			syslog(LOG_DAEMON, "the chroot_dir %s can't be used for chroot", path);
 			err(1, "chroot");
 		}
 		if (chdir("/") == -1) {
@@ -64,14 +61,14 @@ drop_privileges(const char *user, const char *path)
 			       user, pw->pw_uid);
 			err(1, "Can't drop privileges");
 		}
-		strlcpy(chroot_dir, "/", sizeof(chroot_dir));
+		path = "/";
 	}
 #ifdef __OpenBSD__
 	/*
     	 * prevent access to files other than the one in path
     	 */
-	if (unveil(chroot_dir, "r") == -1) {
-		syslog(LOG_DAEMON, "unveil on %s failed", chroot_dir);
+	if (unveil(path, "r") == -1) {
+		syslog(LOG_DAEMON, "unveil on %s failed", path);
 		err(1, "unveil");
 	}
 	/*
