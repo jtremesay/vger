@@ -150,7 +150,7 @@ main(int argc, char **argv)
 	char 		lang     [3] = DEFAULT_LANG;
 	char 		user     [_SC_LOGIN_NAME_MAX] = "";
 	int 		virtualhost = 0;
-	int 		option;
+	int 		option = 0;
 	int 		chroot = 0;
 	int 		start_with_gemini;
 	char        *pos = NULL;
