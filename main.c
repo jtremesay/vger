@@ -153,7 +153,7 @@ main(int argc, char **argv)
 	int 		option;
 	int 		chroot = 0;
 	int 		start_with_gemini;
-	char           *pos;
+	char        *pos = NULL;
 
 	while ((option = getopt(argc, argv, ":d:l:u:v")) != -1) {
 		switch (option) {
