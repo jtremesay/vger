@@ -152,7 +152,7 @@ main(int argc, char **argv)
 	int 		virtualhost = 0;
 	int 		option = 0;
 	int 		chroot = 0;
-	int 		start_with_gemini;
+	int 		start_with_gemini = 0;
 	char        *pos = NULL;
 
 	while ((option = getopt(argc, argv, ":d:l:u:v")) != -1) {
