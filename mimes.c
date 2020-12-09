@@ -120,7 +120,7 @@ static const struct {
 const char *
 get_file_mime(const char *path)
 {
-	int	 i;
+	size_t	 i;
 	char	*extension;
 
 	if ((extension = strrchr(path, '.')) == NULL)

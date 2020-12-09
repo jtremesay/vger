@@ -97,7 +97,6 @@ display_file(const char *path, const char *lang)
 	struct stat	 sb;
 	ssize_t		 nread;
 	char		*buffer[BUFSIZ];
-	char		 extension[10];
 	const char	*file_mime;
 
 	/* this is to check if path is a directory */
@@ -211,7 +210,7 @@ main(int argc, char **argv)
 	if (pos != NULL) {
 		/* if there is a / found */
 		int 		position = -1;
-		for (int i = 0; i < sizeof(request); i++) {
+		for (size_t i = 0; i < sizeof(request); i++) {
 			if (*pos == request[i]) {
 				position = i;
 				break;

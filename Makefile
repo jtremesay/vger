@@ -1,4 +1,6 @@
 PREFIX?=/usr/local/
+CFLAGS  += -pedantic -Wall -Wextra -Wmissing-prototypes \
+           -Wstrict-prototypes -Wwrite-strings
 
 all: vger
 
