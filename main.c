@@ -22,11 +22,22 @@
 void 		display_file(const char *, const char *);
 void 		status   (const int, const char *, const char *);
 void 		drop_privileges(const char *, const char *);
+void        eunveil(const char *path, const char *permissions);
+
+void
+eunveil(const char *path, const char *permissions)
+{
+	if (unveil(path, permissions) == -1) {
+		syslog(LOG_DAEMON, "unveil on %s failed", path);
+		err(1, "unveil");
+	}
+}
 
 void
 drop_privileges(const char *user, const char *path)
 {
 	struct passwd  *pw;
+	int    chrooted = 0;
 
 	/*
 	 * use chroot() if an user is specified requires root user to be
@@ -49,6 +60,7 @@ drop_privileges(const char *user, const char *path)
 			syslog(LOG_DAEMON, "the chroot_dir %s can't be used for chroot", path);
 			err(1, "chroot");
 		}
+		chrooted = 1;
 		if (chdir("/") == -1) {
 			syslog(LOG_DAEMON, "failed to chdir(\"/\")");
 			err(1, "chdir");
@@ -61,15 +73,15 @@ drop_privileges(const char *user, const char *path)
 			       user, pw->pw_uid);
 			err(1, "Can't drop privileges");
 		}
-		path = "/";
 	}
 #ifdef __OpenBSD__
 	/*
-    	 * prevent access to files other than the one in path
-    	 */
-	if (unveil(path, "r") == -1) {
-		syslog(LOG_DAEMON, "unveil on %s failed", path);
-		err(1, "unveil");
+	 * prevent access to files other than the one in path
+	 */
+	if (chrooted) {
+		eunveil("/", "r");
+	} else {
+		eunveil(path, "r");
 	}
 	/*
 	 * prevent system calls other parsing queryfor fread file and
@@ -80,7 +92,6 @@ drop_privileges(const char *user, const char *path)
 		err(1, "pledge");
 	}
 #endif
-
 }
 
 void
