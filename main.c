@@ -197,7 +197,7 @@ main(int argc, char **argv)
 	 * check if the beginning of the request starts with
 	 * gemini://
 	 */
-	start_with_gemini = strncmp(request, "gemini://", 9);
+	start_with_gemini = strncmp(request, "gemini://", GEMINI_PART);
 
 	/* the request must start with gemini:// */
 	if (start_with_gemini != 0) {
