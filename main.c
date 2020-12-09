@@ -24,6 +24,7 @@ void 		display_file(const char *, const char *);
 void 		status   (const int, const char *, const char *);
 void 		drop_privileges(const char *, const char *);
 void        eunveil(const char *path, const char *permissions);
+size_t      estrlcat(char *dst, const char *src, size_t dstsize);
 size_t      estrlcpy(char *dst, const char *src, size_t dstsize);
 
 void
@@ -46,6 +47,16 @@ estrlcpy(char *dst, const char *src, size_t dstsize)
 	}
 
 	return n;
+}
+
+size_t
+estrlcat(char *dst, const char *src, size_t dstsize)
+{
+    size_t size;
+    if ((size = strlcat(dst, src, dstsize)) >= dstsize)
+        err(1, "strlcat");
+
+    return size;
 }
 
 void
@@ -260,7 +271,7 @@ main(int argc, char **argv)
 			if (strlen(file) == 0)
 				estrlcpy(file, "/index.gmi", 11);
 			if (file[strlen(file) - 1] == '/')
-				strlcat(file, "index.gmi", sizeof(file));
+				estrlcat(file, "index.gmi", sizeof(file));
 
 		} else {
 			syslog(LOG_DAEMON, "unknown situation after parsing query");
@@ -281,11 +292,11 @@ main(int argc, char **argv)
 	 * path/foobar/hello
 	 */
 	if (virtualhost) {
-		strlcat(path, hostname, sizeof(path));
-		strlcat(path, "/", sizeof(path));
+		estrlcat(path, hostname, sizeof(path));
+		estrlcat(path, "/", sizeof(path));
 	}
 	/* add the base dir to the file requested */
-	strlcat(path, file, sizeof(path));
+	estrlcat(path, file, sizeof(path));
 
 	/* open file and send it to stdout */
 	display_file(path, lang);
