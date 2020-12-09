@@ -2,6 +2,7 @@
 
 #include <err.h>
 #include <errno.h>
+#include <limits.h>
 #include <pwd.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -12,17 +13,18 @@
 
 #include "mimes.h"
 
-#define BUFF_LEN_2	 1025
-#define BUFF_LEN_3	 1024
 #define GEMINI_PART	 9
 #define DEFAULT_LANG	 "en"
-#define DEFAULT_CHROOT	 "/var/gemini/"
+#define DEFAULT_CHROOT	 "/var/gemini"
+#define GEMINI_REQUEST_MAX 1024 /* see https://gemini.circumlunar.space/docs/specification.html */
+
 
 
 void 		display_file(const char *, const char *);
 void 		status   (const int, const char *, const char *);
 void 		drop_privileges(const char *, const char *);
 void        eunveil(const char *path, const char *permissions);
+size_t      estrlcpy(char *dst, const char *src, size_t dstsize);
 
 void
 eunveil(const char *path, const char *permissions)
@@ -31,6 +33,19 @@ eunveil(const char *path, const char *permissions)
 		syslog(LOG_DAEMON, "unveil on %s failed", path);
 		err(1, "unveil");
 	}
+}
+
+size_t
+estrlcpy(char *dst, const char *src, size_t dstsize)
+{
+	size_t n = 0;
+
+	n = strlcpy(dst, src, dstsize);
+	if (n >= dstsize) {
+		err(1, "estrlcpy failed");	
+	}
+
+	return n;
 }
 
 void
@@ -142,11 +157,10 @@ err:
 int
 main(int argc, char **argv)
 {
-	char 		buffer   [BUFF_LEN_2];
-	char 		request  [BUFF_LEN_2];
-	char 		hostname [BUFF_LEN_2];
-	char 		file     [BUFF_LEN_2];
-	char 		path     [BUFF_LEN_2] = DEFAULT_CHROOT;
+	char 		request  [GEMINI_REQUEST_MAX] = {'\0'};
+	char 		hostname [GEMINI_REQUEST_MAX] = {'\0'};
+	char 		file     [GEMINI_REQUEST_MAX] = {'\0'};
+	char 		path     [GEMINI_REQUEST_MAX] = DEFAULT_CHROOT;
 	char 		lang     [3] = DEFAULT_LANG;
 	char 		user     [_SC_LOGIN_NAME_MAX] = "";
 	int 		virtualhost = 0;
@@ -158,16 +172,16 @@ main(int argc, char **argv)
 	while ((option = getopt(argc, argv, ":d:l:u:v")) != -1) {
 		switch (option) {
 		case 'd':
-			strlcpy(path, optarg, sizeof(path));
+			estrlcpy(path, optarg, sizeof(path));
 			break;
 		case 'v':
 			virtualhost = 1;
 			break;
 		case 'l':
-			strlcpy(lang, optarg, sizeof(lang));
+			estrlcpy(lang, optarg, sizeof(lang));
 			break;
 		case 'u':
-			strlcpy(user, optarg, sizeof(user));
+			estrlcpy(user, optarg, sizeof(user));
 			chroot = 1;
 			break;
 		}
@@ -180,13 +194,17 @@ main(int argc, char **argv)
 
 	/* change basedir to / to build the filepath if we use chroot */
 	if (chroot == 1)
-		strlcpy(path, "/", sizeof(path));
+		estrlcpy(path, "/", sizeof(path));
 
 	/*
 	 * read 1024 chars from stdin
 	 * to get the request
 	 */
-	fgets(request, BUFF_LEN_3, stdin);
+	if (fgets(request, GEMINI_REQUEST_MAX, stdin) == NULL){
+		/*TODO : add error code 5x */
+		syslog(LOG_DAEMON, "request is too long (1024 max): %s", request);
+		exit(1);
+	}
 
 	/* remove \r\n at the end of string */
 	pos = strchr(request, '\r');
@@ -209,8 +227,7 @@ main(int argc, char **argv)
 	syslog(LOG_DAEMON, "request %s", request);
 
 	/* remove the gemini:// part */
-	strlcpy(buffer, request + GEMINI_PART, sizeof(buffer) - GEMINI_PART);
-	strlcpy(request, buffer, sizeof(request));
+	memmove(request, request + GEMINI_PART, sizeof(request) - GEMINI_PART);
 
 	/*
 	 * look for the first / after the hostname
@@ -230,8 +247,10 @@ main(int argc, char **argv)
 
 		/* separate hostname and uri */
 		if (position != -1) {
-			strlcpy(hostname, request, position + 1);
-			strlcpy(file, request + position + 1, sizeof(request));
+			/*estrlcpy(hostname, request - position + 1, sizeof(request - position + 1));*/
+			estrlcpy(file, request+position+1, sizeof(request+position+1));
+			request[position +1] = '\0'; /* this is faster than strlcpy above*/
+		
 
 			/*
 			 * use a default file if no file are requested this
@@ -239,7 +258,7 @@ main(int argc, char **argv)
 			 * gemini://hostname/directory/
 			 */
 			if (strlen(file) == 0)
-				strlcpy(file, "/index.gmi", 11);
+				estrlcpy(file, "/index.gmi", 11);
 			if (file[strlen(file) - 1] == '/')
 				strlcat(file, "index.gmi", sizeof(file));
 
@@ -252,8 +271,8 @@ main(int argc, char **argv)
 		 * there are no slash / in the request
 		 * -2 to remove \r\n
 		*/
-		strlcpy(hostname, request, sizeof(hostname));
-		strlcpy(file, "/index.gmi", 11);
+		estrlcpy(hostname, request, sizeof(hostname));
+		estrlcpy(file, "/index.gmi", 11);
 	}
 
 	/*
