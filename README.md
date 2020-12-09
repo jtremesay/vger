@@ -34,7 +34,7 @@ and drop privileges to a dedicated user.
 git clone https://tildegit.org/solene/vger.git
 cd vger
 make
-sudo make install
+doas make install
 ```
 
 # Running tests
@@ -60,6 +60,8 @@ without a `-d` parameter.
 Create directory `/var/gemini/` (I'd allow this to be configured
 later), files will be served from there.
 
+Create an user `gemini_user`.
+
 Add this line to inetd.conf:
 
 ```
@@ -69,17 +71,20 @@ Add this line to inetd.conf:
 Add this to relayd.conf
 ```
 log connection
+tcp protocol "gemini" {
+    tls keypair hostname.example
+}
+
 relay "gemini" {
     listen on hostname.example port 1965 tls
+	protocol "gemini"
     forward to 127.0.0.1 port 11965
 }
 ```
 
-Make links to the certificates and key files according to relayd.conf documentation
-```
-# ln -s /etc/ssl/acme/cert.pem /etc/ssl/hostname.example\:1965.crt
-# ln -s /etc/ssl/acme/private/privkey.pem /etc/ssl/private/hostname.example\:1965.key
-```
+Make sure certificates files match hostname:
+`/etc/ssl/private/hostname.example.key` and
+`/etc/ssl/hostname.example.crt`.
 
 On OpenBSD, enable inetd and relayd and start them:
 ```
