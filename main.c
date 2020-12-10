@@ -130,9 +130,9 @@ status(const int code, const char *file_mime, const char *lang)
 void
 display_file(const char *path, const char *lang)
 {
-	FILE		*fd;
-	struct stat	 sb;
-	ssize_t		 nread;
+	FILE		*fd = NULL;
+	struct stat	 sb = {0};
+	ssize_t		 nread = 0;
 	char		*buffer[BUFSIZ];
 	const char	*file_mime;
 
@@ -155,7 +155,7 @@ display_file(const char *path, const char *lang)
 	/* read the file and write it to stdout */
 	while ((nread = fread(buffer, sizeof(char), sizeof(buffer), fd)) != 0)
 		fwrite(buffer, sizeof(char), nread, stdout);
-	fclose(fd);
+	goto closefd;
 	syslog(LOG_DAEMON, "path served %s", path);
 
 	return;
@@ -163,6 +163,10 @@ err:
 	/* return an error code and no content */
 	status(40, "text/gemini", lang);
 	syslog(LOG_DAEMON, "path invalid %s", path);
+	goto closefd;
+
+closefd:
+	fclose(fd);
 }
 
 int
@@ -177,7 +181,6 @@ main(int argc, char **argv)
 	int 		virtualhost = 0;
 	int 		option = 0;
 	int 		chroot = 0;
-	int 		start_with_gemini = 0;
 	char        *pos = NULL;
 
 	while ((option = getopt(argc, argv, ":d:l:u:v")) != -1) {
@@ -226,13 +229,10 @@ main(int argc, char **argv)
 	 * check if the beginning of the request starts with
 	 * gemini://
 	 */
-	start_with_gemini = strncmp(request, "gemini://", GEMINI_PART);
-
-	/* the request must start with gemini:// */
-	if (start_with_gemini != 0) {
+	if (strncmp(request, "gemini://", GEMINI_PART) != 0) {
 		/* error code url malformed */
-		syslog(LOG_DAEMON, "request «%s» doesn't match gemini:// at index %i",
-		       request, start_with_gemini);
+		syslog(LOG_DAEMON, "request «%s» doesn't match gemini://",
+		       request);
 		exit(1);
 	}
 	syslog(LOG_DAEMON, "request %s", request);
@@ -248,43 +248,27 @@ main(int argc, char **argv)
 
 	if (pos != NULL) {
 		/* if there is a / found */
-		int 		position = -1;
-		for (size_t i = 0; i < sizeof(request); i++) {
-			if (*pos == request[i]) {
-				position = i;
-				break;
-			}
-		}
-
 		/* separate hostname and uri */
-		if (position != -1) {
-			/*estrlcpy(hostname, request - position + 1, sizeof(request - position + 1));*/
-			estrlcpy(file, request+position+1, sizeof(request+position+1));
-			request[position +1] = '\0'; /* this is faster than strlcpy above*/
-		
+		estrlcpy(file, pos, strlen(pos)+1);
+		/* just keep hostname in request */
+		pos[0] = '\0';
 
-			/*
-			 * use a default file if no file are requested this
-			 * can happen in two cases gemini://hostname/
-			 * gemini://hostname/directory/
-			 */
-			if (strlen(file) == 0)
-				estrlcpy(file, "/index.gmi", 11);
-			if (file[strlen(file) - 1] == '/')
-				estrlcat(file, "index.gmi", sizeof(file));
-
-		} else {
-			syslog(LOG_DAEMON, "unknown situation after parsing query");
-			exit(2);
-		}
+		/*
+		 * use a default file if no file are requested this
+		 * can happen in two cases gemini://hostname/
+		 * gemini://hostname/directory/
+		 */
+		if (strlen(file) == 0)
+			estrlcpy(file, "/index.gmi", 11);
+		if (file[strlen(file) - 1] == '/')
+			estrlcat(file, "index.gmi", sizeof(file));
 	} else {
 		/*
 		 * there are no slash / in the request
-		 * -2 to remove \r\n
-		*/
-		estrlcpy(hostname, request, sizeof(hostname));
+		 */
 		estrlcpy(file, "/index.gmi", 11);
 	}
+	estrlcpy(hostname, request, sizeof(hostname));
 
 	/*
 	 * if virtualhost feature is actived looking under the default path +
