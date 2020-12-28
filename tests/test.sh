@@ -42,6 +42,14 @@ if ! [ $OUT = "0d36a423a4e8be813fda4022f08b3844" ] ; then echo "error" ; exit 1 
 OUT=$(printf "gemini://perso.pw\r\n" | ../vger -v -d var/gemini/ -l fr | tee /dev/stderr | $MD5)
 if ! [ $OUT = "7db981ce93fee268f29324912800f00d" ] ; then echo "error" ; exit 1 ; fi
 
+# file from local directory using virtualhosts and IRI
+OUT=$(printf "gemini://virtualhoßt/é è.gmi\r\n" | ../vger -v -d var/gemini/ | tee /dev/stderr | $MD5)
+if ! [ $OUT = "bd30e2bb2dc2d7d18b5a3cb1af872c70" ] ; then echo "error" ; exit 1 ; fi
+
+# file from local directory using virtualhosts and IRI both with emojis
+OUT=$(printf "gemini://⛴//❤️.gmi\r\n" | ../vger -v -d var/gemini/ | tee /dev/stderr | $MD5)
+if ! [ $OUT = "9bed6f0c92d9c86cb46a32e845fb7161" ] ; then echo "error" ; exit 1 ; fi
+
 # must fail only on OpenBSD !
 # try to escape from unveil
 if [ -f /bsd ]
