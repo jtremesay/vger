@@ -268,6 +268,13 @@ main(int argc, char **argv)
 		 */
 		estrlcpy(file, "/index.gmi", 11);
 	}
+	/* check if client added :port at end of request */
+	pos = strchr(request, ':');
+	if (pos != NULL) {
+	/* end string at :*/
+	pos[0] = '\0';
+	}
+	/* copy hostname from request */
 	estrlcpy(hostname, request, sizeof(hostname));
 
 	/*
