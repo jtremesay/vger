@@ -21,7 +21,8 @@
 
 
 void 		display_file(const char *, const char *);
-void 		status   (const int, const char *, const char *);
+void 		status(const int, const char *, const char *);
+void		status_redirect(const int code, const char *url);
 void 		drop_privileges(const char *, const char *);
 void        eunveil(const char *path, const char *permissions);
 size_t      estrlcat(char *dst, const char *src, size_t dstsize);
@@ -128,6 +129,13 @@ status(const int code, const char *file_mime, const char *lang)
 }
 
 void
+status_redirect(const int code, const char *url)
+{
+	printf("%i %s\r\n",
+	       code, url);
+}
+
+void
 display_file(const char *path, const char *lang)
 {
 	FILE		*fd = NULL;
@@ -135,17 +143,26 @@ display_file(const char *path, const char *lang)
 	ssize_t		 nread = 0;
 	char		*buffer[BUFSIZ];
 	const char	*file_mime;
+	char		target[FILENAME_MAX] = "";
 
-	/* this is to check if path is a directory */
-	if (stat(path, &sb) == -1)
+	/* this is to check if path exists and obtain metadata later */
+	if (stat(path, &sb) == -1) {
+
+		/* check if path is a symbolic link
+	         * if so, redirect using its target */
+                if (lstat(path, &sb) != -1 && S_ISLNK(sb.st_mode) == 1)
+		       	goto redirect;
+                else
+        		goto err;
+	}
+
+
+	/* check if directory */
+	if (S_ISDIR(sb.st_mode) == 1)
 		goto err;
 
 	/* open the file requested */
 	if ((fd = fopen(path, "r")) == NULL)
-		goto err;
-
-	/* check if directory */
-	if (S_ISDIR(sb.st_mode) == 1)
 		goto err;
 
 	file_mime = get_file_mime(path);
@@ -165,8 +182,23 @@ err:
 	syslog(LOG_DAEMON, "path invalid %s", path);
 	goto closefd;
 
+redirect:
+    	/* read symbolic link target to redirect */
+	if (readlink(path, target, FILENAME_MAX) == -1) {
+    	     int  errnum = errno;
+    	            fprintf(stderr, "Value of errno: %d\n", errno);
+    	                  perror("Error printed by perror");
+    	                        fprintf(stderr, "Error opening file: %s\n", strerror( errnum ));
+     		goto err;
+	}
+
+    	status_redirect(39, target);
+    	syslog(LOG_DAEMON, "redirection from %s to %s", path, target);
+
 closefd:
-	fclose(fd);
+    	if (S_ISREG(sb.st_mode) == 1) {
+        	fclose(fd);
+    	}
 }
 
 int

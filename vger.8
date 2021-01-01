@@ -20,6 +20,9 @@ behind a relay daemon offering TLS capabilities like
 If an incoming gemini query doesn't explicitly request a file,
 .Nm
 will serves a default "index.gmi" file if present.
+.Pp
+It is possible to create redirections by creating a symbolic link
+containing the new file location.
 .Sh OPTIONS
 .Bl -tag -width Ds
 .It Op Fl l Ar lang

@@ -1,7 +1,7 @@
 # A simplistic and secure Gemini server
 
 **Vger** is a gemini server supporting chroot, virtualhosts, default
-language choice and MIME types detection.
+language choice, redirections and MIME types detection.
 
 **Vger** design is relying on inetd and a daemon to take care of
 TLS.  The idea is to delegate TLS and network to daemons which
@@ -91,3 +91,5 @@ On OpenBSD, enable inetd and relayd and start them:
 # rcctl enable relayd inetd
 # rcctl start relayd inetd
 ```
+
+Vger will serve files named `index.gmi` if no explicite filename is given.

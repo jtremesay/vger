@@ -34,6 +34,10 @@ if ! [ $OUT = "e663f17730d5ddc24010c14a238e1e78" ] ; then echo "error" ; exit 1 
 OUT=$(printf "gemini://perso.pw/foobar.unknown\r\n" | ../vger -d var/gemini/ -l fr | tee /dev/stderr | $MD5)
 if ! [ $OUT = "649a2e224632b679fd7599eafb13c001" ] ; then echo "error" ; exit 1 ; fi
 
+# redirect file
+OUT=$(printf "gemini://perso.pw/old_location\r\n" | ../vger -d var/gemini/ | tee /dev/stderr | $MD5)
+if ! [ $OUT = "28262311ea814e6a481fa365894cfc3f" ] ; then echo "error" ; exit 1 ; fi
+
 # file from local directory using virtualhosts
 OUT=$(printf "gemini://perso.pw/index.gmi\r\n" | ../vger -v -d var/gemini/ | tee /dev/stderr | $MD5)
 if ! [ $OUT = "0d36a423a4e8be813fda4022f08b3844" ] ; then echo "error" ; exit 1 ; fi
