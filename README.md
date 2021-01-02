@@ -92,4 +92,6 @@ On OpenBSD, enable inetd and relayd and start them:
 # rcctl start relayd inetd
 ```
 
+Don't forget to open the TCP port 1965 in your firewall.
+
 Vger will serve files named `index.gmi` if no explicite filename is given.
