@@ -62,7 +62,7 @@ can be used on any port because it won't be public.
 .Pp
 /etc/inetd.conf example using a dedicated gemini_user:
 .Bd -literal -offset indent
-11965 stream tcp nowait gemini_user /usr/local/bin/vger vger
+127.0.0.1:11965 stream tcp nowait gemini_user /usr/local/bin/vger vger
 .Ed
 .Pp
 The public port TCP/1965 must be served by a daemon like

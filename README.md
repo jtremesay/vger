@@ -65,7 +65,7 @@ Create an user `gemini_user`.
 Add this line to inetd.conf:
 
 ```
-11965 stream tcp nowait gemini_user /usr/local/bin/vger vger
+127.0.0.1:11965 stream tcp nowait gemini_user /usr/local/bin/vger vger
 ```
 
 Add this to relayd.conf
@@ -77,7 +77,7 @@ tcp protocol "gemini" {
 
 relay "gemini" {
     listen on hostname.example port 1965 tls
-	protocol "gemini"
+    protocol "gemini"
     forward to 127.0.0.1 port 11965
 }
 ```
