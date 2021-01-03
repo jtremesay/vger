@@ -178,7 +178,7 @@ display_file(const char *path, const char *lang)
 	return;
 err:
 	/* return an error code and no content */
-	status(40, "text/gemini", lang);
+	status(51, "text/gemini", lang);
 	syslog(LOG_DAEMON, "path invalid %s", path);
 	goto closefd;
 
@@ -192,7 +192,7 @@ redirect:
      		goto err;
 	}
 
-    	status_redirect(39, target);
+    	status_redirect(30, target);
     	syslog(LOG_DAEMON, "redirection from %s to %s", path, target);
 
 closefd:
