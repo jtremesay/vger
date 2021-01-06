@@ -26,6 +26,10 @@ if ! [ $OUT = "3edd48286850d386592403956aec770f" ] ; then echo "error" ; exit 1 
 OUT=$(printf "gemini://host.name:1965\r\n" | ../vger -d var/gemini/ | tee /dev/stderr | $MD5)
 if ! [ $OUT = "3edd48286850d386592403956aec770f" ] ; then echo "error" ; exit 1 ; fi
 
+# serving index.gmi automatically in a sub directory ending without "/"
+OUT=$(printf "gemini://host.name/subdir\r\n" | ../vger -d var/gemini/ | tee /dev/stderr | $MD5)
+if ! [ $OUT = "d11e0c0ff074f5627f2d2af72fd07104" ] ; then echo "error" ; exit 1 ; fi
+
 # file from local directory with lang=fr and markdown MIME type
 OUT=$(printf "gemini://perso.pw/file.md\r\n" | ../vger -d var/gemini/ -l fr | tee /dev/stderr | $MD5)
 if ! [ $OUT = "e663f17730d5ddc24010c14a238e1e78" ] ; then echo "error" ; exit 1 ; fi
@@ -89,7 +93,7 @@ then
 
     # file from /var/gemini/blog
     OUT=$(printf "gemini://host.name/blog\r\n" | ../vger | tee /dev/stderr | $MD5)
-    if ! [ $OUT = "ae3ce9fb5191a08a2c1f3e36b2985a01" ] ; then echo "error" ; exit 1 ; fi
+    if ! [ $OUT = "83bd01c9af0e44d5439b9ac95dc28132" ] ; then echo "error" ; exit 1 ; fi
 
 fi
 

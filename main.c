@@ -158,24 +158,31 @@ display_file(const char *path, const char *lang)
 
 
 	/* check if directory */
-	if (S_ISDIR(sb.st_mode) == 1)
-		goto err;
+	if (S_ISDIR(sb.st_mode) != 0) {
+		/* look for index.gmi inside dir */
+		char index_path[GEMINI_REQUEST_MAX] = {'\0'};
+		estrlcpy(index_path, path, sizeof(index_path));
+		estrlcat(index_path, "/index.gmi", sizeof(index_path));
+		display_file(index_path, lang);
+
+	} else {
 
 	/* open the file requested */
-	if ((fd = fopen(path, "r")) == NULL)
-		goto err;
+		if ((fd = fopen(path, "r")) == NULL) { goto err; }
 
-	file_mime = get_file_mime(path);
+		file_mime = get_file_mime(path);
 
-	status(20, file_mime, lang);
+		status(20, file_mime, lang);
 
-	/* read the file and write it to stdout */
-	while ((nread = fread(buffer, sizeof(char), sizeof(buffer), fd)) != 0)
-		fwrite(buffer, sizeof(char), nread, stdout);
-	goto closefd;
-	syslog(LOG_DAEMON, "path served %s", path);
+		/* read the file and write it to stdout */
+		while ((nread = fread(buffer, sizeof(char), sizeof(buffer), fd)) != 0)
+			fwrite(buffer, sizeof(char), nread, stdout);
+		goto closefd;
+		syslog(LOG_DAEMON, "path served %s", path);
+	}
 
 	return;
+
 err:
 	/* return an error code and no content */
 	status(51, "text/gemini", lang);
@@ -185,10 +192,6 @@ err:
 redirect:
     	/* read symbolic link target to redirect */
 	if (readlink(path, target, FILENAME_MAX) == -1) {
-    	     int  errnum = errno;
-    	            fprintf(stderr, "Value of errno: %d\n", errno);
-    	                  perror("Error printed by perror");
-    	                        fprintf(stderr, "Error opening file: %s\n", strerror( errnum ));
      		goto err;
 	}
 
@@ -196,7 +199,7 @@ redirect:
     	syslog(LOG_DAEMON, "redirection from %s to %s", path, target);
 
 closefd:
-    	if (S_ISREG(sb.st_mode) == 1) {
+    	if (S_ISREG(sb.st_mode) != 0) {
         	fclose(fd);
     	}
 }
@@ -284,21 +287,6 @@ main(int argc, char **argv)
 		estrlcpy(file, pos, strlen(pos)+1);
 		/* just keep hostname in request */
 		pos[0] = '\0';
-
-		/*
-		 * use a default file if no file are requested this
-		 * can happen in two cases gemini://hostname/
-		 * gemini://hostname/directory/
-		 */
-		if (strlen(file) == 0)
-			estrlcpy(file, "/index.gmi", 11);
-		if (file[strlen(file) - 1] == '/')
-			estrlcat(file, "index.gmi", sizeof(file));
-	} else {
-		/*
-		 * there are no slash / in the request
-		 */
-		estrlcpy(file, "/index.gmi", 11);
 	}
 	/* check if client added :port at end of request */
 	pos = strchr(request, ':');
