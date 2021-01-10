@@ -98,3 +98,5 @@ On OpenBSD, enable inetd and relayd and start them:
 Don't forget to open the TCP port 1965 in your firewall.
 
 Vger will serve files named `index.gmi` if no explicit filename is given.
+If this file doesn't exist and auto index is enabled, an index file
+with a link to every file in the directory will be served.
