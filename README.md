@@ -50,9 +50,12 @@ without a `-d` parameter.
 **Vger**  has a few parameters you can use in inetd configuration.
 
 - `-d PATH`: use `PATH` as the data directory to serve files from. Default is `/var/gemini`
-- `-l LANG`: change the language in the status return code. Default is `en`
+- `-l LANG`: change the language in the status return code. Default is no language specified.
 - `-v`: enable virtualhost support, the hostname in the query will be considered as a directory name.
 - `-u username`: enable chroot to the data directory and drop privileges to `username`.
+- `-m MIME` : use MIME as default instead of "application/octet-stream".
+- `-i` : Enable auto index if no "index.gmi" file is found in a directory.
+
 
 
 # How to configure Vger using relayd and inetd
@@ -94,4 +97,4 @@ On OpenBSD, enable inetd and relayd and start them:
 
 Don't forget to open the TCP port 1965 in your firewall.
 
-Vger will serve files named `index.gmi` if no explicite filename is given.
+Vger will serve files named `index.gmi` if no explicit filename is given.

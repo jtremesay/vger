@@ -12,31 +12,35 @@ fi
 
 # serving a file
 OUT=$(printf "gemini://host.name/main.gmi\r\n" | ../vger -d var/gemini/ | tee /dev/stderr | $MD5)
-if ! [ $OUT = "d11e0c0ff074f5627f2d2af72fd07104" ] ; then echo "error" ; exit 1 ; fi
+if ! [ $OUT = "c7e352d6aae4ee7e7604548f7874fb9d" ] ; then echo "error" ; exit 1 ; fi
 
 # default index.gmi file
 OUT=$(printf "gemini://host.name\r\n" | ../vger -d var/gemini/ | tee /dev/stderr | $MD5)
-if ! [ $OUT = "3edd48286850d386592403956aec770f" ] ; then echo "error" ; exit 1 ; fi
+if ! [ $OUT = "fcc5a293f316e01f7b3103f97eca26b1" ] ; then echo "error" ; exit 1 ; fi
 
 # default index.gmi file when using a trailing slash
 OUT=$(printf "gemini://host.name/\r\n" | ../vger -d var/gemini/ | tee /dev/stderr | $MD5)
-if ! [ $OUT = "3edd48286850d386592403956aec770f" ] ; then echo "error" ; exit 1 ; fi
+if ! [ $OUT = "fcc5a293f316e01f7b3103f97eca26b1" ] ; then echo "error" ; exit 1 ; fi
 
 # default index.gmi file when client specify port
 OUT=$(printf "gemini://host.name:1965\r\n" | ../vger -d var/gemini/ | tee /dev/stderr | $MD5)
-if ! [ $OUT = "3edd48286850d386592403956aec770f" ] ; then echo "error" ; exit 1 ; fi
+if ! [ $OUT = "fcc5a293f316e01f7b3103f97eca26b1" ] ; then echo "error" ; exit 1 ; fi
 
-# serving index.gmi automatically in a sub directory ending without "/"
+# redirect to uri with trailing / if directory
 OUT=$(printf "gemini://host.name/subdir\r\n" | ../vger -d var/gemini/ | tee /dev/stderr | $MD5)
-if ! [ $OUT = "d11e0c0ff074f5627f2d2af72fd07104" ] ; then echo "error" ; exit 1 ; fi
+if ! [ $OUT = "84e5e7bb3eee0dfcc8db14865dc83e77" ] ; then echo "error" ; exit 1 ; fi
 
 # file from local directory with lang=fr and markdown MIME type
 OUT=$(printf "gemini://perso.pw/file.md\r\n" | ../vger -d var/gemini/ -l fr | tee /dev/stderr | $MD5)
 if ! [ $OUT = "e663f17730d5ddc24010c14a238e1e78" ] ; then echo "error" ; exit 1 ; fi
 
-# file from local directory with lang=fr and unknwon MIME type (default to text/gemini)
+# file from local directory with lang=fr and unknown MIME type (default to application/octet-stream)
 OUT=$(printf "gemini://perso.pw/foobar.unknown\r\n" | ../vger -d var/gemini/ -l fr | tee /dev/stderr | $MD5)
-if ! [ $OUT = "649a2e224632b679fd7599eafb13c001" ] ; then echo "error" ; exit 1 ; fi
+if ! [ $OUT = "a23b0053d759863a45da4afbffd847d2" ] ; then echo "error" ; exit 1 ; fi
+
+# file from local directory and unknown MIME type, default forced to text/plain
+OUT=$(printf "gemini://perso.pw/foobar.unknown\r\n" | ../vger -d var/gemini/ -m text/plain | tee /dev/stderr | $MD5)
+if ! [ $OUT = "383a5a5ddb7bb30e3553ecb666378ebc" ] ; then echo "error" ; exit 1 ; fi
 
 # redirect file
 OUT=$(printf "gemini://perso.pw/old_location\r\n" | ../vger -d var/gemini/ | tee /dev/stderr | $MD5)
@@ -44,11 +48,11 @@ if ! [ $OUT = "cb4597b6fcc82cbc366ac9002fb60dac" ] ; then echo "error" ; exit 1 
 
 # file from local directory using virtualhosts
 OUT=$(printf "gemini://perso.pw/index.gmi\r\n" | ../vger -v -d var/gemini/ | tee /dev/stderr | $MD5)
-if ! [ $OUT = "0d36a423a4e8be813fda4022f08b3844" ] ; then echo "error" ; exit 1 ; fi
+if ! [ $OUT = "5e5fca557e79f4521b21d4b81dc964c6" ] ; then echo "error" ; exit 1 ; fi
 
 # file from local directory using virtualhosts without specifying a file
 OUT=$(printf "gemini://perso.pw\r\n" | ../vger -v -d var/gemini/ | tee /dev/stderr | $MD5)
-if ! [ $OUT = "0d36a423a4e8be813fda4022f08b3844" ] ; then echo "error" ; exit 1 ; fi
+if ! [ $OUT = "5e5fca557e79f4521b21d4b81dc964c6" ] ; then echo "error" ; exit 1 ; fi
 
 # file from local directory using virtualhosts without specifying a file using lang = fr
 OUT=$(printf "gemini://perso.pw\r\n" | ../vger -v -d var/gemini/ -l fr | tee /dev/stderr | $MD5)
@@ -56,11 +60,19 @@ if ! [ $OUT = "7db981ce93fee268f29324912800f00d" ] ; then echo "error" ; exit 1 
 
 # file from local directory using virtualhosts and IRI
 OUT=$(printf "gemini://virtualhoßt/é è.gmi\r\n" | ../vger -v -d var/gemini/ | tee /dev/stderr | $MD5)
-if ! [ $OUT = "bd30e2bb2dc2d7d18b5a3cb1af872c70" ] ; then echo "error" ; exit 1 ; fi
+if ! [ $OUT = "282cee071d3bd20dbb6e6af38f217a29" ] ; then echo "error" ; exit 1 ; fi
 
 # file from local directory using virtualhosts and IRI both with emojis
 OUT=$(printf "gemini://⛴//❤️.gmi\r\n" | ../vger -v -d var/gemini/ | tee /dev/stderr | $MD5)
-if ! [ $OUT = "9bed6f0c92d9c86cb46a32e845fb7161" ] ; then echo "error" ; exit 1 ; fi
+if ! [ $OUT = "e354a1a29ea8273faaf0cdc29c1d8583" ] ; then echo "error" ; exit 1 ; fi
+
+# auto index in directory without index.gmi must redirect
+OUT=$(printf "gemini://host.name/autoidx\r\n" | ../vger -d var/gemini/ -i | tee /dev/stderr | $MD5)
+if ! [ $OUT = "874f5e1af67eff6b93bedf8ac8033066" ] ; then echo "error" ; exit 1 ; fi
+
+# auto index in directory
+OUT=$(printf "gemini://host.name/autoidx/\r\n" | ../vger -d var/gemini/ -i | tee /dev/stderr | $MD5)
+if ! [ $OUT = "770a987b8f5cf7169e6bc3c6563e1570" ] ; then echo "error" ; exit 1 ; fi
 
 # must fail only on OpenBSD !
 # try to escape from unveil

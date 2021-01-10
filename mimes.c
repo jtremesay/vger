@@ -3,11 +3,14 @@
 #include <string.h>
 
 #include "mimes.h"
+#include "opts.h"
 
 static const struct {
 	const char	*extension;
 	const char	*type;
 } database[] = {
+	{"gmi", "text/gemini"},
+	{"gemini", "text/gemini"},
 	{"7z", "application/x-7z-compressed"},
 	{"atom", "application/atom+xml"},
 	{"avi", "video/x-msvideo"},
@@ -24,9 +27,7 @@ static const struct {
 	{"exe", "application/octet-stream"},
 	{"flv", "video/x-flv"},
 	{"fs", "application/octet-stream"},
-	{"gemini", "text/gemini"},
 	{"gif", "image/gif"},
-	{"gmi", "text/gemini"},
 	{"hqx", "application/mac-binhex40"},
 	{"htc", "text/x-component"},
 	{"html", "text/html"},
@@ -118,7 +119,7 @@ static const struct {
 #endif
 
 const char *
-get_file_mime(const char *path)
+get_file_mime(const char *path, const char *default_mime)
 {
 	size_t	 i;
 	char	*extension;
@@ -134,5 +135,5 @@ get_file_mime(const char *path)
 
  out:
 	/* if no MIME have been found, set a default one */
-	return ("text/gemini");
+	return (default_mime);
 }

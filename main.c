@@ -1,5 +1,7 @@
 #include <sys/stat.h>
+#include <sys/types.h>
 
+#include <dirent.h>
 #include <err.h>
 #include <errno.h>
 #include <limits.h>
@@ -12,21 +14,21 @@
 #include <unistd.h>
 
 #include "mimes.h"
+#include "opts.h"
 
 #define GEMINI_PART	 9
-#define DEFAULT_LANG	 "en"
-#define DEFAULT_CHROOT	 "/var/gemini"
 #define GEMINI_REQUEST_MAX 1024 /* see https://gemini.circumlunar.space/docs/specification.html */
 
 
 
-void 		display_file(const char *, const char *);
-void 		status(const int, const char *, const char *);
-void		status_redirect(const int code, const char *url);
+void        autoindex(const char *);
+void 		display_file(const char *);
+void 		status(const int, const char *);
+void		status_redirect(const int, const char *);
 void 		drop_privileges(const char *, const char *);
-void        eunveil(const char *path, const char *permissions);
-size_t      estrlcat(char *dst, const char *src, size_t dstsize);
-size_t      estrlcpy(char *dst, const char *src, size_t dstsize);
+void        eunveil(const char *, const char *);
+size_t      estrlcat(char *, const char *, size_t);
+size_t      estrlcpy(char *, const char *, size_t);
 
 void
 eunveil(const char *path, const char *permissions)
@@ -44,7 +46,7 @@ estrlcpy(char *dst, const char *src, size_t dstsize)
 
 	n = strlcpy(dst, src, dstsize);
 	if (n >= dstsize) {
-		err(1, "estrlcpy failed");	
+        err(1, "strlcyp failed for %s = %s", dst, src);
 	}
 
 	return n;
@@ -55,7 +57,7 @@ estrlcat(char *dst, const char *src, size_t dstsize)
 {
     size_t size;
     if ((size = strlcat(dst, src, dstsize)) >= dstsize)
-        err(1, "strlcat");
+        err(1, "strlcat on %s + %s", dst, src);
 
     return size;
 }
@@ -122,9 +124,9 @@ drop_privileges(const char *user, const char *path)
 }
 
 void
-status(const int code, const char *file_mime, const char *lang)
+status(const int code, const char *file_mime)
 {
-	printf("%i %s; lang=%s\r\n",
+	printf("%i %s; %s\r\n",
 	       code, file_mime, lang);
 }
 
@@ -136,72 +138,123 @@ status_redirect(const int code, const char *url)
 }
 
 void
-display_file(const char *path, const char *lang)
+display_file(const char *uri)
 {
 	FILE		*fd = NULL;
 	struct stat	 sb = {0};
 	ssize_t		 nread = 0;
-	char		*buffer[BUFSIZ];
 	const char	*file_mime;
-	char		target[FILENAME_MAX] = "";
+	char		*buffer[BUFSIZ];
+	char		target[FILENAME_MAX] = {'\0'};
+	char		fp[PATH_MAX] = {'\0'};
+
+	/* build file path inside chroot */
+	estrlcpy(fp, chroot_dir, sizeof(fp));
+	estrlcat(fp, uri, sizeof(fp));
 
 	/* this is to check if path exists and obtain metadata later */
-	if (stat(path, &sb) == -1) {
+	if (stat(fp, &sb) == -1) {
 
-		/* check if path is a symbolic link
-	         * if so, redirect using its target */
-                if (lstat(path, &sb) != -1 && S_ISLNK(sb.st_mode) == 1)
-		       	goto redirect;
-                else
-        		goto err;
+		/* check if fp is a symbolic link
+		 * if so, redirect using its target */
+		if (lstat(fp, &sb) != -1 && S_ISLNK(sb.st_mode) == 1)
+		goto redirect;
+		else
+		goto err;
 	}
-
 
 	/* check if directory */
 	if (S_ISDIR(sb.st_mode) != 0) {
-		/* look for index.gmi inside dir */
-		char index_path[GEMINI_REQUEST_MAX] = {'\0'};
-		estrlcpy(index_path, path, sizeof(index_path));
-		estrlcat(index_path, "/index.gmi", sizeof(index_path));
-		display_file(index_path, lang);
+		if (fp[strlen(fp) -1 ] != '/') {
+			/* no ending "/", redirect to "path/" */
+			char new_uri[PATH_MAX] = {'\0'};
+			estrlcpy(new_uri, uri, sizeof(fp));
+			estrlcat(new_uri, "/", sizeof(fp));
+			status_redirect(31, new_uri);
+			return;
 
-	} else {
+		} else {
+			/* there is a leading "/", display index.gmi */
+			char index_path[PATH_MAX] = {'\0'};
+			estrlcpy(index_path, fp, sizeof(index_path));
+			estrlcat(index_path, "index.gmi", sizeof(index_path));
+
+			/* check if index.gmi exists or show autoindex */
+			if (stat(index_path, &sb) == 0) {
+				estrlcpy(fp, index_path, sizeof(fp));
+			} else if (doautoidx != 0) {
+				autoindex(fp);
+				return;
+			} else {
+				goto err;
+			}
+		}
+	}
 
 	/* open the file requested */
-		if ((fd = fopen(path, "r")) == NULL) { goto err; }
+	if ((fd = fopen(fp, "r")) == NULL) { goto err; }
 
-		file_mime = get_file_mime(path);
+	file_mime = get_file_mime(fp, default_mime);
 
-		status(20, file_mime, lang);
+	status(20, file_mime);
 
-		/* read the file and write it to stdout */
-		while ((nread = fread(buffer, sizeof(char), sizeof(buffer), fd)) != 0)
-			fwrite(buffer, sizeof(char), nread, stdout);
-		goto closefd;
-		syslog(LOG_DAEMON, "path served %s", path);
-	}
+	/* read the file and write it to stdout */
+	while ((nread = fread(buffer, sizeof(char), sizeof(buffer), fd)) != 0)
+		fwrite(buffer, sizeof(char), nread, stdout);
+	goto closefd;
+	syslog(LOG_DAEMON, "path served %s", fp);
 
 	return;
 
 err:
 	/* return an error code and no content */
-	status(51, "text/gemini", lang);
-	syslog(LOG_DAEMON, "path invalid %s", path);
+	status(51, "text/gemini");
+	syslog(LOG_DAEMON, "path invalid %s", fp);
 	goto closefd;
 
 redirect:
-    	/* read symbolic link target to redirect */
-	if (readlink(path, target, FILENAME_MAX) == -1) {
-     		goto err;
+	/* read symbolic link target to redirect */
+	if (readlink(fp, target, FILENAME_MAX) == -1) {
+		goto err;
 	}
 
-    	status_redirect(30, target);
-    	syslog(LOG_DAEMON, "redirection from %s to %s", path, target);
+	status_redirect(30, target);
+	syslog(LOG_DAEMON, "redirection from %s to %s", fp, target);
 
 closefd:
-    	if (S_ISREG(sb.st_mode) != 0) {
-        	fclose(fd);
-    	}
+	if (S_ISREG(sb.st_mode) != 0) {
+		fclose(fd);
+	}
+}
+
+void
+autoindex(const char *path)
+{
+	struct dirent *dp;
+	DIR *fd;
+
+
+	if (!(fd = opendir(path))) {
+		err(1,"opendir '%s':", path);
+	}
+
+	syslog(LOG_DAEMON, "autoindex: %s", path);
+
+	status(20, "text/gemini");
+
+	/* TODO : add ending / in name if directory */
+	while ((dp = readdir(fd))) {
+		/* skip self */
+		if (!strcmp(dp->d_name, ".")) {
+			continue;
+		}
+		if (dp->d_type == DT_DIR) {
+			printf("=> ./%s/ %s/\n", dp->d_name, dp->d_name);
+		} else {
+			printf("=> ./%s %s\n", dp->d_name, dp->d_name);
+		}
+	}
+	closedir(fd);
 }
 
 int
@@ -209,29 +262,32 @@ main(int argc, char **argv)
 {
 	char 		request  [GEMINI_REQUEST_MAX] = {'\0'};
 	char 		hostname [GEMINI_REQUEST_MAX] = {'\0'};
-	char 		file     [GEMINI_REQUEST_MAX] = {'\0'};
-	char 		path     [GEMINI_REQUEST_MAX] = DEFAULT_CHROOT;
-	char 		lang     [3] = DEFAULT_LANG;
+	char 		uri      [PATH_MAX]           = {'\0'};
 	char 		user     [_SC_LOGIN_NAME_MAX] = "";
 	int 		virtualhost = 0;
 	int 		option = 0;
-	int 		chroot = 0;
 	char        *pos = NULL;
 
-	while ((option = getopt(argc, argv, ":d:l:u:v")) != -1) {
+	while ((option = getopt(argc, argv, ":d:l:m:u:vi")) != -1) {
 		switch (option) {
 		case 'd':
-			estrlcpy(path, optarg, sizeof(path));
+			estrlcpy(chroot_dir, optarg, sizeof(chroot_dir));
+			break;
+		case 'l':
+			estrlcpy(lang, "lang=", sizeof(lang));
+			estrlcat(lang, optarg, sizeof(lang));
+			break;
+		case 'm':
+			estrlcpy(default_mime, optarg, sizeof(default_mime));
+			break;
+		case 'u':
+			estrlcpy(user, optarg, sizeof(user));
 			break;
 		case 'v':
 			virtualhost = 1;
 			break;
-		case 'l':
-			estrlcpy(lang, optarg, sizeof(lang));
-			break;
-		case 'u':
-			estrlcpy(user, optarg, sizeof(user));
-			chroot = 1;
+		case 'i':
+			doautoidx = 1;
 			break;
 		}
 	}
@@ -239,18 +295,14 @@ main(int argc, char **argv)
 	/*
 	 * do chroot if an user is supplied run pledge/unveil if OpenBSD
 	 */
-	drop_privileges(user, path);
-
-	/* change basedir to / to build the filepath if we use chroot */
-	if (chroot == 1)
-		estrlcpy(path, "/", sizeof(path));
+	drop_privileges(user, chroot_dir);
 
 	/*
 	 * read 1024 chars from stdin
 	 * to get the request
 	 */
-	if (fgets(request, GEMINI_REQUEST_MAX, stdin) == NULL){
-		/*TODO : add error code 5x */
+	if (fgets(request, GEMINI_REQUEST_MAX, stdin) == NULL) {
+		status(59, "request is too long (1024 max)");
 		syslog(LOG_DAEMON, "request is too long (1024 max): %s", request);
 		exit(1);
 	}
@@ -284,7 +336,7 @@ main(int argc, char **argv)
 	if (pos != NULL) {
 		/* if there is a / found */
 		/* separate hostname and uri */
-		estrlcpy(file, pos, strlen(pos)+1);
+		estrlcpy(uri, pos, strlen(pos)+1);
 		/* just keep hostname in request */
 		pos[0] = '\0';
 	}
@@ -298,19 +350,22 @@ main(int argc, char **argv)
 	estrlcpy(hostname, request, sizeof(hostname));
 
 	/*
-	 * if virtualhost feature is actived looking under the default path +
+	 * if virtualhost feature is actived looking under the chroot_path +
 	 * hostname directory gemini://foobar/hello will look for
-	 * path/foobar/hello
+	 * chroot_path/foobar/hello
 	 */
 	if (virtualhost) {
-		estrlcat(path, hostname, sizeof(path));
-		estrlcat(path, "/", sizeof(path));
+		if (strlen(uri) == 0) {
+			estrlcpy(uri, "/index.gmi", sizeof(uri));
+		}
+		char new_uri[PATH_MAX] = {'\0'};
+		estrlcpy(new_uri, hostname, sizeof(new_uri));
+		estrlcat(new_uri, uri, sizeof(new_uri));
+		estrlcpy(uri, new_uri, sizeof(uri));
 	}
-	/* add the base dir to the file requested */
-	estrlcat(path, file, sizeof(path));
 
 	/* open file and send it to stdout */
-	display_file(path, lang);
+	display_file(uri);
 
 	return (0);
 }

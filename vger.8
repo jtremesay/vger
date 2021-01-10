@@ -8,8 +8,10 @@
 .Nm vger
 .Op Fl l Ar lang
 .Op Fl v
+.Op Fl i
 .Op Fl d Ar path
 .Op Fl u Ar username
+.Op Fl m Ar mimetype
 .Sh DESCRIPTION
 .Nm
 is a secure gemini server that is meant to be run on
@@ -27,13 +29,22 @@ containing the new file location.
 .Bl -tag -width Ds
 .It Op Fl l Ar lang
 Set the default lang in the return code to
-.Ar lang
-instead of "en".
+.Ar lang .
+A list can be specified, i.e "-l en,fr"
+will send "lang=en,fr".
+
+Default is no lang metadata.
+.It Op Fl i
+Enable auto index if no index.gmi is found in a directory.
 .It Op Fl v
 Enable virtualhost support, the hostname in the query will be considered as a directory name.
 As example, for request gemini://hostname.example/file.gmi
 .Nm
 will read the file /var/gemini/hostname.example/file.gmi
+.It Op Fl m Ar mimetype
+Use
+.Ar mimetype
+instead of the default "application/octet-stream" as MIME for files without or unrecognized extension.
 .It Op Fl d Ar path
 Use
 .Ar path

@@ -7,7 +7,7 @@ all: vger
 clean:
 	rm -f vger *.core *.o
 
-vger: main.o mimes.o
+vger: main.o mimes.o opts.h
 	${CC} -o vger main.o mimes.o
 
 install: vger
