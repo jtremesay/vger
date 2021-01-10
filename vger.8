@@ -28,14 +28,13 @@ containing the new file location.
 .Sh OPTIONS
 .Bl -tag -width Ds
 .It Op Fl l Ar lang
-Set the default lang in the return code to
+Set the lang in the return code to
 .Ar lang .
-A list can be specified, i.e "-l en,fr"
-will send "lang=en,fr".
-
+A list can be specified, i.e "-l en,fr" will send "lang=en,fr".
 Default is no lang metadata.
 .It Op Fl i
 Enable auto index if no index.gmi is found in a directory.
+The index is a file that will contain a link to every file within the current directory.
 .It Op Fl v
 Enable virtualhost support, the hostname in the query will be considered as a directory name.
 As example, for request gemini://hostname.example/file.gmi
@@ -44,7 +43,9 @@ will read the file /var/gemini/hostname.example/file.gmi
 .It Op Fl m Ar mimetype
 Use
 .Ar mimetype
-instead of the default "application/octet-stream" as MIME for files without or unrecognized extension.
+instead of the "application/octet-stream" as content type for which
+.Nm
+is unable to find the type.
 .It Op Fl d Ar path
 Use
 .Ar path
