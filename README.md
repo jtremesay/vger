@@ -55,7 +55,7 @@ without a `-d` parameter.
 - `-u username`: enable chroot to the data directory and drop privileges to `username`.
 - `-m MIME` : use MIME as default instead of "application/octet-stream".
 - `-i` : Enable auto index if no "index.gmi" file is found in a directory.
-
+- `-c CGI_PATH` : Exec CGI_PATH instead of serving it.
 
 
 # How to configure Vger using relayd and inetd

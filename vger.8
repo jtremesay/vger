@@ -9,6 +9,7 @@
 .Op Fl l Ar lang
 .Op Fl v
 .Op Fl i
+.Op Fl c Ar cgi_path
 .Op Fl d Ar path
 .Op Fl u Ar username
 .Op Fl m Ar mimetype
@@ -40,6 +41,22 @@ Enable virtualhost support, the hostname in the query will be considered as a di
 As example, for request gemini://hostname.example/file.gmi
 .Nm
 will read the file /var/gemini/hostname.example/file.gmi
+.It Op Fl c
+Enable CGI support.
+.Ar cgi_path
+will be executed as a cgi script. This path is relative to the served capsule. As example, for a request gemini://hostname.example/cgi-bin/hello.cgi, one must set:
+.Bd -literal -offset indent
+vger -c /cgi-bin/hello.cgi
+.Ed
+.Pp
+In this case,
+.Xr pledge 2
+promises are set to "stdio proc exec"
+and an additional
+.Xr unveil 2
+permission on the cgi script is set to "rx".
+.Pp
+Be very careful on how you write your CGI, it can read outside the chroot.
 .It Op Fl m Ar mimetype
 Use
 .Ar mimetype
