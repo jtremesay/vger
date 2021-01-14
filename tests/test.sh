@@ -72,7 +72,7 @@ if ! [ $OUT = "874f5e1af67eff6b93bedf8ac8033066" ] ; then echo "error" ; exit 1 
 
 # auto index in directory
 OUT=$(printf "gemini://host.name/autoidx/\r\n" | ../vger -d var/gemini/ -i | tee /dev/stderr | $MD5)
-if ! [ $OUT = "9cb7ef77cbcd74dadafdbff47d864152" ] ; then echo "error" ; exit 1 ; fi
+if ! [ $OUT = "770a987b8f5cf7169e6bc3c6563e1570" ] ; then echo "error" ; exit 1 ; fi
 
 # cgi simple script
 OUT=$(printf "gemini://host.name/cgi-bin/test.cgi\r\n" | ../vger -d var/gemini/ -c /cgi-bin | tee /dev/stderr | $MD5)
@@ -84,7 +84,7 @@ if ! [ $OUT = "fa065a67d1f7c973501d4a9e3ca2ea57" ] ; then echo "error" ; exit 1 
 
 # cgi with error
 OUT=$(printf "gemini://host.name/cgi-bin/nope\r\n" | ../vger -d var/gemini/ -c /cgi-bin | tee /dev/stderr | $MD5)
-if ! [ $OUT = "babaa82d5b2bd4e8d21ab412e060c890" ] ; then echo "error" ; exit 1 ; fi
+if ! [ $OUT = "2c88347cfac44450035283a8508a29cb" ] ; then echo "error" ; exit 1 ; fi
 
 # must fail only on OpenBSD !
 # try to escape from unveil

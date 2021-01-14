@@ -201,31 +201,31 @@ closefd:
 void
 autoindex(const char *path)
 {
-	struct dirent *dp;
-	DIR *fd;
+	int n = 0;
+	struct dirent **namelist;
 
-
-	if (!(fd = opendir(path))) {
-		err(1,"opendir '%s':", path);
-	}
 
 	syslog(LOG_DAEMON, "autoindex: %s", path);
 
 	status(20, "text/gemini");
 
-	/* TODO : add ending / in name if directory */
-	while ((dp = readdir(fd))) {
-		/* skip self */
-		if (!strcmp(dp->d_name, ".")) {
-			continue;
+	if ((n = scandir(path, &namelist, NULL, alphasort)) < 0) {
+		status(51, "text/gemini");
+		errlog("Can't scan %s", path);
+	} else {
+		for(int j = 0; j < n; j++) {
+			if (!strcmp(namelist[j]->d_name, ".")) {
+				continue;
+			}
+			if (namelist[j]->d_type == DT_DIR) {
+				printf("=> ./%s/ %s/\n", namelist[j]->d_name, namelist[j]->d_name);
+			} else {
+				printf("=> ./%s %s\n", namelist[j]->d_name, namelist[j]->d_name);
+			}
+			free(namelist[j]);
 		}
-		if (dp->d_type == DT_DIR) {
-			printf("=> ./%s/ %s/\n", dp->d_name, dp->d_name);
-		} else {
-			printf("=> ./%s %s\n", dp->d_name, dp->d_name);
-		}
+		free(namelist);
 	}
-	closedir(fd);
 }
 
 void
@@ -236,6 +236,7 @@ cgi(const char *cgicmd)
 	pid_t pid;
 
 	if (pipe(pipedes) != 0) {
+		status(42, "text/gemini");
 		err(1, "pipe failed");
 	}
 
@@ -244,6 +245,7 @@ cgi(const char *cgicmd)
 	if (pid < 0) {
 		close(pipedes[0]);
 		close(pipedes[1]);
+		status(42, "text/gemini");
 		err(1, "fork failed");
 	}
 
@@ -257,6 +259,7 @@ cgi(const char *cgicmd)
 		/* use fread/fwrite because are buffered */
 		output = fdopen(pipedes[0], "r");
 		if (output == NULL) {
+			status(42, "text/gemini");
 			err(1, "fdopen failed");
 		}
 
@@ -276,7 +279,7 @@ cgi(const char *cgicmd)
 		close(pipedes[1]); /* no need this file descriptor : it is now stdout */
 		execlp(cgicmd, cgicmd, NULL);
 		/* if execlp is ok, this will never be reached */
-		status(42, "text/plain");
+		status(42, "text/gemini");
 		errlog("error when trying to execlp %s", cgicmd);
 	}
 }
