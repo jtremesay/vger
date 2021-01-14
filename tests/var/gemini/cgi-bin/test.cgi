@@ -1,6 +1,6 @@
 #!/bin/sh
 
-echo "20 cgi_test"
+printf "%s %s: cgi_test\r\n" "20 text/plain"
 
 echo "env vars:"
 echo $GATEWAY_INTERFACE

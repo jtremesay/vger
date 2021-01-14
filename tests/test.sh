@@ -76,11 +76,11 @@ if ! [ $OUT = "9cb7ef77cbcd74dadafdbff47d864152" ] ; then echo "error" ; exit 1 
 
 # cgi simple script
 OUT=$(printf "gemini://host.name/cgi-bin/test.cgi\r\n" | ../vger -d var/gemini/ -c /cgi-bin | tee /dev/stderr | $MD5)
-if ! [ $OUT = "ed3552892cf7edac4f81178467f6c48a" ] ; then echo "error" ; exit 1 ; fi
+if ! [ $OUT = "666e48200f90018b5e96c2cf974882dc" ] ; then echo "error" ; exit 1 ; fi
 
 # cgi with use of variables
 OUT=$(printf "gemini://host.name/cgi-bin/who.cgi?user=jean-mi\r\n" | ../vger -d var/gemini/ -c /cgi-bin | tee /dev/stderr | $MD5)
-if ! [ $OUT = "06f710962d6504b19cdfe77f5fcff29e" ] ; then echo "error" ; exit 1 ; fi
+if ! [ $OUT = "fa065a67d1f7c973501d4a9e3ca2ea57" ] ; then echo "error" ; exit 1 ; fi
 
 # cgi with error
 OUT=$(printf "gemini://host.name/cgi-bin/nope\r\n" | ../vger -d var/gemini/ -c /cgi-bin | tee /dev/stderr | $MD5)
