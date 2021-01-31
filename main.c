@@ -214,7 +214,8 @@ autoindex(const char *path)
 		errlog("Can't scan %s", path);
 	} else {
 		for(int j = 0; j < n; j++) {
-			if (!strcmp(namelist[j]->d_name, ".")) {
+			if ((strcmp(namelist[j]->d_name, ".") == 0) ||
+			    (strcmp(namelist[j]->d_name, "..") == 0)) {
 				continue;
 			}
 			if (namelist[j]->d_type == DT_DIR) {
@@ -353,7 +354,12 @@ main(int argc, char **argv)
 	syslog(LOG_DAEMON, "request %s", request);
 
 	/* remove the gemini:// part */
-	memmove(request, request + GEMINI_PART, sizeof(request) - GEMINI_PART);
+	memmove(request, request + GEMINI_PART, strlen(request) +1 - GEMINI_PART);
+
+	/* remove all "/.." for safety reasons */
+    while ((pos = strstr(request, "/..")) != NULL ) {
+		memmove(request, pos+3, strlen(pos) +1 - 3); /* "/.." = 3 */
+	}
 
 	/*
 	 * look for the first / after the hostname
@@ -393,9 +399,8 @@ main(int argc, char **argv)
 	}
 
 	/* check if uri is cgibin */
-	if ((strlen(cgibin) > 0) && 
-		(strncmp(uri, cgibin, strlen(cgibin)) == 0)
-		) {
+	if ((strlen(cgibin) > 0) &&
+		(strncmp(uri, cgibin, strlen(cgibin)) == 0)) {
 		char cgipath[PATH_MAX] = {'\0'};
 		estrlcpy(cgipath, chroot_dir, sizeof(cgipath));
 		estrlcat(cgipath, uri, sizeof(cgipath));
@@ -429,7 +434,7 @@ main(int argc, char **argv)
 		cgi(cgipath);
 
 	} else {
-		//TODO: percent decoding here 
+		//TODO: percent decoding here
 		/* open file and send it to stdout */
 		display_file(uri);
 	}
