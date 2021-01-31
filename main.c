@@ -82,6 +82,9 @@ drop_privileges(const char *user, const char *path)
 		estrlcat(cgifullpath, cgibin, sizeof(cgifullpath));
 		eunveil(cgifullpath, "rx");
 	}
+	/* no more unveil later */
+	eunveil(NULL, NULL);
+
 	/*
 	 * prevent system calls other parsing queryfor fread file and
 	 * write to stdio
@@ -292,6 +295,7 @@ main(int argc, char **argv)
 	char 		hostname [GEMINI_REQUEST_MAX] = {'\0'};
 	char 		uri      [PATH_MAX]           = {'\0'};
 	char 		user     [_SC_LOGIN_NAME_MAX] = "";
+	char        query[PATH_MAX]               = {'\0'};
 	int 		virtualhost = 0;
 	int 		option = 0;
 	char        *pos = NULL;
@@ -383,6 +387,14 @@ main(int argc, char **argv)
 	/* copy hostname from request */
 	estrlcpy(hostname, request, sizeof(hostname));
 
+	/* look for "?" if any to set query for cgi, or remove it*/
+	pos = strchr(uri, '?');
+	if (pos != NULL) {
+		estrlcpy(query, pos+1, sizeof(query));
+		esetenv("QUERY_STRING", query, 1);
+		pos[0] = '\0';
+	}
+
 	/*
 	 * if virtualhost feature is actived looking under the chroot_path +
 	 * hostname directory gemini://foobar/hello will look for
@@ -392,15 +404,16 @@ main(int argc, char **argv)
 		if (strlen(uri) == 0) {
 			estrlcpy(uri, "/index.gmi", sizeof(uri));
 		}
-		char new_uri[PATH_MAX] = {'\0'};
-		estrlcpy(new_uri, hostname, sizeof(new_uri));
-		estrlcat(new_uri, uri, sizeof(new_uri));
-		estrlcpy(uri, new_uri, sizeof(uri));
+		char tmp[PATH_MAX] = {'\0'};
+		estrlcpy(tmp, hostname, sizeof(tmp));
+		estrlcat(tmp, uri, sizeof(tmp));
+		estrlcpy(uri, tmp, sizeof(uri));
 	}
 
 	/* check if uri is cgibin */
 	if ((strlen(cgibin) > 0) &&
 		(strncmp(uri, cgibin, strlen(cgibin)) == 0)) {
+
 		char cgipath[PATH_MAX] = {'\0'};
 		estrlcpy(cgipath, chroot_dir, sizeof(cgipath));
 		estrlcat(cgipath, uri, sizeof(cgipath));
@@ -410,14 +423,6 @@ main(int argc, char **argv)
 		esetenv("SERVER_PROTOCOL", "GEMINI", 1);
 		esetenv("SERVER_SOFTWARE", "vger/1", 1);
 
-		/* look for "?" to set query */
-		pos = strchr(cgipath, '?');
-		if (pos != NULL) {
-			char query[PATH_MAX] = {'\0'};
-			estrlcpy(query, pos+1, sizeof(query));
-			esetenv("QUERY_STRING", query, 1);
-			pos[0] = '\0';
-		}
 		/* look for an extension to find PATH_INFO */
 		pos = strrchr(cgipath, '.');
 		if (pos != NULL) {

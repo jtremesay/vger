@@ -44,7 +44,10 @@ will read the file /var/gemini/hostname.example/file.gmi
 .It Op Fl c
 Enable CGI support.
 .Ar cgi_path
-will be executed as a cgi script. This path is relative to the served capsule. As example, for a request gemini://hostname.example/cgi-bin/hello.cgi, one must set:
+will be executed as a cgi script. This path is relative to the directory set with
+.Fl d 
+flag. If using virtualhost, you must insert the virtualhost directory in the cgi path.
+As example, for a request gemini://hostname.example/cgi-bin/hello.cgi, one must set:
 .Bd -literal -offset indent
 vger -c /cgi-bin/hello.cgi
 .Ed
@@ -53,10 +56,7 @@ Note you can define a directory instead of a single file.
 .Pp
 In this case,
 .Xr pledge 2
-promises are set to "stdio proc exec"
-and an additional
-.Xr unveil 2
-permission on the cgi script is set to "rx".
+promises and unveil permission are set to enable cgi execution.
 .Pp
 Be very careful on how you write your CGI, it can read outside the chroot.
 .It Op Fl m Ar mimetype
