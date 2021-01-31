@@ -72,7 +72,7 @@ if ! [ $OUT = "874f5e1af67eff6b93bedf8ac8033066" ] ; then echo "error" ; exit 1 
 
 # auto index in directory
 OUT=$(printf "gemini://host.name/autoidx/\r\n" | ../vger -d var/gemini/ -i | tee /dev/stderr | $MD5)
-if ! [ $OUT = "988160d1908a9dcd0cadc21262de4490" ] ; then echo "error" ; exit 1 ; fi
+if ! [ $OUT = "515bcb4ba5f8869360f53afe2841e044" ] ; then echo "error" ; exit 1 ; fi
 
 # cgi simple script
 OUT=$(printf "gemini://host.name/cgi-bin/test.cgi\r\n" | ../vger -d var/gemini/ -c /cgi-bin | tee /dev/stderr | $MD5)

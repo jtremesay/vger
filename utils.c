@@ -34,7 +34,7 @@ estrlcpy(char *dst, const char *src, size_t dstsize)
 
 	n = strlcpy(dst, src, dstsize);
 	if (n >= dstsize) {
-        err(1, "strlcyp failed for %s = %s", dst, src);
+        err(1, "strlcpy failed for %s = %s", dst, src);
 	}
 
 	return n;

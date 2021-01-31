@@ -76,13 +76,16 @@ drop_privileges(const char *user, const char *path)
 	} else {
 		eunveil(path, "r");
 	}
+	/* permission to execute what's inside cgipath */
 	if (strlen(cgibin) > 0) {
+		/* first, build the full path of cgi (not in chroot) */
 		char cgifullpath[PATH_MAX] = {'\0'};
 		estrlcpy(cgifullpath, path, sizeof(cgifullpath));
 		estrlcat(cgifullpath, cgibin, sizeof(cgifullpath));
+
 		eunveil(cgifullpath, "rx");
 	}
-	/* no more unveil later */
+	/* forbid more unveil */
 	eunveil(NULL, NULL);
 
 	/*
@@ -90,6 +93,7 @@ drop_privileges(const char *user, const char *path)
 	 * write to stdio
 	 */
 	if (strlen(cgibin) > 0) {
+		/* cgi need execlp() (exec) and fork() (proc) */
 		epledge("stdio rpath exec proc", NULL);
 	} else {
 		epledge("stdio rpath", NULL);
@@ -121,6 +125,7 @@ display_file(const char *uri)
 	char		*buffer[BUFSIZ];
 	char		target[FILENAME_MAX] = {'\0'};
 	char		fp[PATH_MAX] = {'\0'};
+	char        tmp[PATH_MAX] = {'\0'}; /* used to build temporary path */
 
 	/* build file path inside chroot */
 	estrlcpy(fp, chroot_dir, sizeof(fp));
@@ -141,21 +146,19 @@ display_file(const char *uri)
 	if (S_ISDIR(sb.st_mode) != 0) {
 		if (fp[strlen(fp) -1 ] != '/') {
 			/* no ending "/", redirect to "path/" */
-			char new_uri[PATH_MAX] = {'\0'};
-			estrlcpy(new_uri, uri,  sizeof(new_uri));
-			estrlcat(new_uri, "/", sizeof(new_uri));
-			status_redirect(31, new_uri);
+			estrlcpy(tmp, uri,  sizeof(tmp));
+			estrlcat(tmp, "/", sizeof(tmp));
+			status_redirect(31, tmp);
 			return;
 
 		} else {
 			/* there is a leading "/", display index.gmi */
-			char index_path[PATH_MAX] = {'\0'};
-			estrlcpy(index_path, fp, sizeof(index_path));
-			estrlcat(index_path, "index.gmi", sizeof(index_path));
+			estrlcpy(tmp, fp, sizeof(tmp));
+			estrlcat(tmp, "index.gmi", sizeof(tmp));
 
 			/* check if index.gmi exists or show autoindex */
-			if (stat(index_path, &sb) == 0) {
-				estrlcpy(fp, index_path, sizeof(fp));
+			if (stat(tmp, &sb) == 0) {
+				estrlcpy(fp, tmp, sizeof(fp));
 			} else if (doautoidx != 0) {
 				autoindex(fp);
 				return;
@@ -172,7 +175,7 @@ display_file(const char *uri)
 
 	status(20, file_mime);
 
-	/* read the file and write it to stdout */
+	/* read the file byte after byte in buffer and write it to stdout */
 	while ((nread = fread(buffer, 1, sizeof(buffer), fd)) != 0)
 		fwrite(buffer, 1, nread, stdout);
 	goto closefd;
@@ -205,22 +208,41 @@ void
 autoindex(const char *path)
 {
 	int n = 0;
-	struct dirent **namelist;
+	char *pos = NULL;
+	struct dirent **namelist; /* this must be freed at last */
 
 
 	syslog(LOG_DAEMON, "autoindex: %s", path);
 
 	status(20, "text/gemini");
 
+	/* display link to parent */
+	char parent[PATH_MAX] = {'\0'};
+	/* parent is "path" without chroot_dir */
+	estrlcpy(parent, path+strlen(chroot_dir), sizeof(parent));
+	/* remove ending '/' */
+	while (parent[strlen(parent)-1] == '/') {
+		parent[strlen(parent)-1] = '\0';
+	}
+	/* remove last part after '/' */
+	pos = strrchr(parent, '/');
+	if (pos != NULL) {
+		pos[1] = '\0'; /* at worse, parent is now "/" */
+	}
+	printf("=> %s ../\n", parent);
+
+	/* use alphasort to always have the same order on every system */
 	if ((n = scandir(path, &namelist, NULL, alphasort)) < 0) {
 		status(51, "text/gemini");
 		errlog("Can't scan %s", path);
 	} else {
 		for(int j = 0; j < n; j++) {
+			/* skip self and parent */
 			if ((strcmp(namelist[j]->d_name, ".") == 0) ||
 			    (strcmp(namelist[j]->d_name, "..") == 0)) {
 				continue;
 			}
+			/* add "/" at the end of a directory path */
 			if (namelist[j]->d_type == DT_DIR) {
 				printf("=> ./%s/ %s/\n", namelist[j]->d_name, namelist[j]->d_name);
 			} else {
@@ -239,6 +261,7 @@ cgi(const char *cgicmd)
 	int pipedes[2] = {0};
 	pid_t pid;
 
+	/* get a pipe to get stdout */
 	if (pipe(pipedes) != 0) {
 		status(42, "text/gemini");
 		err(1, "pipe failed");
@@ -414,6 +437,7 @@ main(int argc, char **argv)
 	if ((strlen(cgibin) > 0) &&
 		(strncmp(uri, cgibin, strlen(cgibin)) == 0)) {
 
+		/* cgipath with chroot_dir at the beginning */
 		char cgipath[PATH_MAX] = {'\0'};
 		estrlcpy(cgipath, chroot_dir, sizeof(cgipath));
 		estrlcat(cgipath, uri, sizeof(cgipath));
