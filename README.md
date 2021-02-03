@@ -37,6 +37,8 @@ make
 doas make install
 ```
 
+On GNU/Linux, make sure you installed ``libbsd``.
+
 # Running tests
 
 **Vger** comes with a test suite you can use with `make test`.

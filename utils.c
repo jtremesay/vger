@@ -9,6 +9,7 @@
 
 #include "utils.h"
 
+#ifdef __OpenBSD__
 void
 eunveil(const char *path, const char *permissions)
 {
@@ -26,6 +27,7 @@ epledge(const char *promises, const char *execpromises)
 		err(1, "pledge failed for: %s", promises);
 	}
 }
+#endif
 
 size_t
 estrlcpy(char *dst, const char *src, size_t dstsize)
