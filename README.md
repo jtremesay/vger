@@ -37,7 +37,7 @@ make
 doas make install
 ```
 
-On GNU/Linux, make sure you installed ``libbsd``.
+On GNU/Linux, make sure you installed `libbsd`.
 
 # Running tests
 
