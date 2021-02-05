@@ -10,10 +10,10 @@ CFLAGS  += -pedantic -Wall -Wextra -Wmissing-prototypes \
 all: vger
 
 clean:
-	find . -name vger -o \
-		-name \*\.o -o \
-		-name \*\.core \
-		-delete
+	find . \( -name vger -o \
+		  -name "*.o" -o \
+		  -name "*.core" \) \
+		  -delete
 
 vger: main.o mimes.o utils.o opts.h
 	${CC} ${CFLAGS} -o $@ main.o mimes.o utils.o
