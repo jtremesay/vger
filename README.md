@@ -1,7 +1,7 @@
 # A simplistic and secure Gemini server
 
-**Vger** is a gemini server supporting chroot, virtualhosts, default
-language choice, redirections and MIME types detection.
+**Vger** is a gemini server supporting chroot, virtualhosts, CGI,
+default language choice, redirections and MIME types detection.
 
 **Vger** design is relying on inetd and a daemon to take care of
 TLS.  The idea is to delegate TLS and network to daemons which
@@ -22,7 +22,9 @@ The average setup should look like:
 **Vger** is perfectly secure if run on **OpenBSD**, using `unveil()`
 the filesystem access is restricted to one directory (default to
 `/var/gemini/`) and with `pledge()` only systems calls related to
-reading files and reading input/output are allowed.
+reading files and reading input/output are allowed. More explanations
+about Vger security can be found
+[on this link](https://dataswamp.org/~solene/2021-01-14-vger-security.html).
 
 For all supported OS, it's possible to run **Vger** in a chroot
 and drop privileges to a dedicated user.
@@ -57,7 +59,7 @@ without a `-d` parameter.
 - `-u username`: enable chroot to the data directory and drop privileges to `username`.
 - `-m MIME` : use MIME as default instead of "application/octet-stream".
 - `-i` : Enable auto index if no "index.gmi" file is found in a directory.
-- `-c CGI_PATH` : Exec CGI_PATH instead of serving it.
+- `-c CGI_PATH` : files in CGI_PATH are executed and their output is returned to the client.
 
 
 # How to configure Vger using relayd and inetd
