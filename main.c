@@ -66,6 +66,9 @@ drop_privileges(const char *user, const char *path)
 			errlog("dropping privileges to user %s (uid=%i) failed",
 			       user, pw->pw_uid);
 		}
+
+		/* base directory is now / */
+                estrlcpy(chroot_dir, "/", sizeof(chroot_dir));
 	}
 #ifdef __OpenBSD__
 	/*
