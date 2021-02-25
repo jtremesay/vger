@@ -20,7 +20,7 @@
 #include "utils.h"
 
 #define GEMINI_PART	 9
-#define GEMINI_REQUEST_MAX 1024 /* see https://gemini.circumlunar.space/docs/specification.html */
+#define GEMINI_REQUEST_MAX 1024  /* https://gemini.circumlunar.space/docs/specification.html */
 
 
 
@@ -358,19 +358,27 @@ main(int argc, char **argv)
 	 */
 	drop_privileges(user, chroot_dir);
 
+	size_t reqlen = 0;
 	/*
 	 * read 1024 chars from stdin
 	 * to get the request
 	 */
-	if (fgets(request, GEMINI_REQUEST_MAX, stdin) == NULL) {
-		status(59, "request is too long (1024 max)");
-		errlog("request is too long (1024 max): %s", request);
+	reqlen = fread(request, 1, GEMINI_REQUEST_MAX, stdin);
+
+	/* now should end of file, or request is too long */
+	if (feof(stdin) == 0) {
+		status(59, "request too long");
+		errlog("request too long");
 	}
 
 	/* remove \r\n at the end of string */
-	pos = strchr(request, '\r');
-	if (pos != NULL)
+	pos = strstr(request, "\r\n");
+	if (pos != NULL) {
 		*pos = '\0';
+	} else {
+		status(59, "malformed request, must end with \r\n");
+		errlog("malformed request, must end with \r\n");
+	}
 
 	/*
 	 * check if the beginning of the request starts with
@@ -378,6 +386,7 @@ main(int argc, char **argv)
 	 */
 	if (strncmp(request, "gemini://", GEMINI_PART) != 0) {
 		/* error code url malformed */
+		status(59, "request malformed : must start with gemini://");
 		errlog("request «%s» doesn't match gemini://",
 		       request);
 	}
