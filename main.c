@@ -435,10 +435,10 @@ main(int argc, char **argv)
 	 * hostname directory gemini://foobar/hello will look for
 	 * chroot_path/foobar/hello
 	 */
+	if (strlen(uri) == 0) {
+		estrlcpy(uri, "/index.gmi", sizeof(uri));
+	}
 	if (virtualhost) {
-		if (strlen(uri) == 0) {
-			estrlcpy(uri, "/index.gmi", sizeof(uri));
-		}
 		char tmp[PATH_MAX] = {'\0'};
 		estrlcpy(tmp, hostname, sizeof(tmp));
 		estrlcat(tmp, uri, sizeof(tmp));
