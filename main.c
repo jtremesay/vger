@@ -20,7 +20,7 @@
 #include "utils.h"
 
 #define GEMINI_PART	 9
-#define GEMINI_REQUEST_MAX 1025  /* https://gemini.circumlunar.space/docs/specification.html + ending \0 */
+#define GEMINI_REQUEST_MAX 1024  /* https://gemini.circumlunar.space/docs/specification.html */
 
 
 
