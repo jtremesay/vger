@@ -20,8 +20,11 @@
 #include "utils.h"
 
 #define GEMINI_PART	 9
-#define GEMINI_REQUEST_MAX 1024 /* see https://gemini.circumlunar.space/docs/specification.html */
-
+/* 2014 + 1
+ * see https://gemini.circumlunar.space/docs/specification.html.
+ * fgets() reads at most size-1 (1024 here)
+ */
+#define GEMINI_REQUEST_MAX 1025
 
 
 void        autoindex(const char *);
@@ -363,6 +366,20 @@ main(int argc, char **argv)
 	 * to get the request
 	 */
 	if (fgets(request, GEMINI_REQUEST_MAX, stdin) == NULL) {
+		/* EOF reached before reading anything */
+		if (feof(stdin)) {
+			status(59, "request is too short and probably empty");
+			errlog("request is too short and probably empty");
+
+		/* error before reading anything */
+		} else if (ferror(stdin)) {
+			status(59, "Error while reading request");
+			errlog("Error while reading request: %s", request);
+		}
+	}
+
+	/* check if string ends with '\n', or to long */
+	if (request[strnlen(request, GEMINI_REQUEST_MAX) - 1] != '\n') {
 		status(59, "request is too long (1024 max)");
 		errlog("request is too long (1024 max): %s", request);
 	}
