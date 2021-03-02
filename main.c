@@ -2,6 +2,7 @@
 #include <sys/stat.h>
 #include <sys/wait.h>
 
+#include <ctype.h>
 #include <dirent.h>
 #include <err.h>
 #include <errno.h>
@@ -33,6 +34,43 @@ void 		display_file(const char *);
 void 		status(const int, const char *);
 void		status_redirect(const int, const char *);
 void 		drop_privileges(const char *, const char *);
+int         uridecode(char *);
+
+int
+uridecode(char *uri)
+{
+    int n = 0;
+    char c = '\0';
+	long l = 0;
+    char *pos = NULL;
+
+    if ((pos = strchr(uri, '%')) == NULL) {
+        return n;
+    }
+    while ((pos = strchr(pos, '%')) != NULL) {
+        if (strlen(pos) < 3) {
+            return n;
+        }
+
+        char hex[3] = {'\0'};
+        for (size_t i=0; i < 2; i++) {
+            hex[i] = tolower(pos[i+1]);
+        }
+        errno = 0;
+        l = strtol(hex, 0, 16);
+        if (errno == ERANGE && (l == LONG_MAX || l == LONG_MIN)) {
+            /* conversion failed */
+            continue;
+        }
+        c = (char)l;
+        pos[0] = c;
+        /* rewind of two char to remove %hex */
+        memmove(pos+1 , pos + 3, strlen(pos+3) + 1); /* +1 for \0*/
+        n++;
+        pos++; /* avoid infinite loop */
+    }
+	return n;
+}
 
 void
 drop_privileges(const char *user, const char *path)
@@ -483,7 +521,7 @@ main(int argc, char **argv)
 		cgi(cgipath);
 
 	} else {
-		//TODO: percent decoding here
+		uridecode(uri);
 		/* open file and send it to stdout */
 		display_file(uri);
 	}
