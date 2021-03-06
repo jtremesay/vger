@@ -99,8 +99,8 @@ drop_privileges(const char *user, const char *path)
 	 * write to stdio
 	 */
 	if (strlen(cgibin) > 0) {
-		/* cgi need execlp() (exec) and fork() (proc) */
-		epledge("stdio rpath exec proc", NULL);
+		/* cgi need execlp() (exec) */
+		epledge("stdio rpath exec", NULL);
 	} else {
 		epledge("stdio rpath", NULL);
 	}
@@ -270,58 +270,11 @@ autoindex(const char *path)
 void
 cgi(const char *cgicmd)
 {
-
-	int pipedes[2] = {0};
-	pid_t pid;
-
-	/* get a pipe to get stdout */
-	if (pipe(pipedes) != 0) {
-		status(42, "text/gemini");
-		err(1, "pipe failed");
-	}
-
-	pid = fork();
-
-	if (pid < 0) {
-		close(pipedes[0]);
-		close(pipedes[1]);
-		status(42, "text/gemini");
-		err(1, "fork failed");
-	}
-
-	if (pid > 0) { /* parent */
-		char buf[3];
-		size_t nread = 0;
-		FILE *output = NULL;
-
-		close(pipedes[1]); /* make sure entry is closed so fread() gets EOF */
-
-		/* use fread/fwrite because are buffered */
-		output = fdopen(pipedes[0], "r");
-		if (output == NULL) {
-			status(42, "text/gemini");
-			err(1, "fdopen failed");
-		}
-
-		/* read pipe output */
-		while ((nread = fread(buf, 1, sizeof(buf), output)) != 0) {
-			fwrite(buf, 1, nread, stdout);
-		}
-		close(pipedes[0]);
-		fclose(output);
-
-		wait(NULL); /* wait for child to terminate */
-
-		exit(0);
-
-	} else if (pid == 0) { /* child */
-		dup2(pipedes[1], STDOUT_FILENO); /* set pipe output equal to stdout */
-		close(pipedes[1]); /* no need this file descriptor : it is now stdout */
-		execlp(cgicmd, cgicmd, NULL);
-		/* if execlp is ok, this will never be reached */
-		status(42, "text/gemini");
-		errlog("error when trying to execlp %s", cgicmd);
-	}
+	execlp(cgicmd, cgicmd, NULL);
+	/* if execlp is ok, this will never be reached */
+	status(42, "Couldn't execute CGI script");
+	errlog("error when trying to execlp %s", cgicmd);
+	exit(1);
 }
 
 int

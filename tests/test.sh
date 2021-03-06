@@ -89,7 +89,7 @@ if ! [ $OUT = "fa065a67d1f7c973501d4a9e3ca2ea57" ] ; then echo "error" ; exit 1 
 
 # cgi with error
 OUT=$(printf "gemini://host.name/cgi-bin/nope\r\n" | ../vger -d var/gemini/ -c /cgi-bin | tee /dev/stderr | MD5)
-if ! [ $OUT = "2c88347cfac44450035283a8508a29cb" ] ; then echo "error" ; exit 1 ; fi
+if ! [ $OUT = "4156170c2aa8a6a8a0892ff5a61bf5f5" ] ; then echo "error" ; exit 1 ; fi
 
 # remove ?.* if any
 OUT=$(printf "gemini://host.name/main.gmi?anything-here\r\n" | ../vger -d var/gemini/ | tee /dev/stderr | MD5)
