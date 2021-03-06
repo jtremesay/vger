@@ -93,8 +93,6 @@ drop_privileges(const char *user, const char *path)
 
 		eunveil(cgifullpath, "rx");
 	}
-	/* forbid more unveil */
-	eunveil(NULL, NULL);
 
 	/*
 	 * prevent system calls other parsing queryfor fread file and
