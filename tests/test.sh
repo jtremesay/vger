@@ -31,6 +31,10 @@ if ! [ $OUT = "fcc5a293f316e01f7b3103f97eca26b1" ] ; then echo "error" ; exit 1 
 OUT=$(printf "gemini://host.name/subdir\r\n" | ../vger -d var/gemini/ | tee /dev/stderr | MD5)
 if ! [ $OUT = "84e5e7bb3eee0dfcc8db14865dc83e77" ] ; then echo "error" ; exit 1 ; fi
 
+# redirect to uri with trailing / if directory and vhost enabled
+OUT=$(printf "gemini://perso.pw/cgi-bin\r\n" | ../vger -vd var/gemini | tee /dev/stderr | MD5)
+if ! [ $OUT = "c782da4173898f57033a0804b8e96fc3" ] ; then echo "error" ; exit 1 ; fi
+
 # file from local directory with lang=fr and markdown MIME type
 OUT=$(printf "gemini://perso.pw/file.md\r\n" | ../vger -d var/gemini/ -l fr | tee /dev/stderr | MD5)
 if ! [ $OUT = "e663f17730d5ddc24010c14a238e1e78" ] ; then echo "error" ; exit 1 ; fi
