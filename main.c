@@ -26,6 +26,7 @@
  */
 #define GEMINI_REQUEST_MAX 1025
 
+int virtualhost;
 
 void        autoindex(const char *);
 void        cgi(const char *cgicmd);
@@ -160,7 +161,9 @@ display_file(const char *uri)
 	if (S_ISDIR(sb.st_mode) != 0) {
 		if (fp[strlen(fp) -1 ] != '/') {
 			/* no ending "/", redirect to "path/" */
-			estrlcpy(tmp, uri,  sizeof(tmp));
+			if (virtualhost)
+				estrlcat(tmp, "gemini://", sizeof(tmp));
+			estrlcat(tmp, uri,  sizeof(tmp));
 			estrlcat(tmp, "/", sizeof(tmp));
 			status_redirect(31, tmp);
 			return;
@@ -331,7 +334,6 @@ main(int argc, char **argv)
 	char 		uri      [PATH_MAX]           = {'\0'};
 	char 		user     [_SC_LOGIN_NAME_MAX] = "";
 	char        query[PATH_MAX]               = {'\0'};
-	int 		virtualhost = 0;
 	int 		option = 0;
 	char        *pos = NULL;
 
