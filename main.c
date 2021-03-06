@@ -32,6 +32,7 @@ void        cgi(const char *cgicmd);
 void 		display_file(const char *);
 void 		status(const int, const char *);
 void		status_redirect(const int, const char *);
+void		status_error(const int, const char*);
 void 		drop_privileges(const char *, const char *);
 
 void
@@ -122,6 +123,13 @@ status_redirect(const int code, const char *url)
 }
 
 void
+status_error(const int code, const char *reason)
+{
+	printf("%i %s\r\n",
+		code, reason);
+}
+
+void
 display_file(const char *uri)
 {
 	FILE		*fd = NULL;
@@ -191,7 +199,7 @@ display_file(const char *uri)
 
 err:
 	/* return an error code and no content */
-	status(51, "text/gemini");
+	status_error(51, "file not found");
 	syslog(LOG_DAEMON, "path invalid %s", fp);
 	goto closefd;
 
@@ -217,10 +225,7 @@ autoindex(const char *path)
 	char *pos = NULL;
 	struct dirent **namelist; /* this must be freed at last */
 
-
 	syslog(LOG_DAEMON, "autoindex: %s", path);
-
-	status(20, "text/gemini");
 
 	/* display link to parent */
 	char parent[PATH_MAX] = {'\0'};
@@ -235,13 +240,14 @@ autoindex(const char *path)
 	if (pos != NULL) {
 		pos[1] = '\0'; /* at worse, parent is now "/" */
 	}
-	printf("=> %s ../\n", parent);
 
 	/* use alphasort to always have the same order on every system */
 	if ((n = scandir(path, &namelist, NULL, alphasort)) < 0) {
-		status(51, "text/gemini");
+		status_error(50, "Internal server error");
 		errlog("Can't scan %s", path);
 	} else {
+		status(20, "text/gemini");
+		printf("=> %s ../\n", parent);
 		for(int j = 0; j < n; j++) {
 			/* skip self and parent */
 			if ((strcmp(namelist[j]->d_name, ".") == 0) ||
