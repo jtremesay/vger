@@ -103,6 +103,10 @@ if ! [ $OUT = "666e48200f90018b5e96c2cf974882dc" ] ; then echo "error" ; exit 1 
 OUT=$(printf "%s\r\n" "gemini://host.name/percent%25-encode%3f.gmi" | ../vger -d var/gemini/ | tee /dev/stderr | MD5)
 if ! [ $OUT = "83d59cca9ed7040145ac6df1992f5daf" ] ; then echo "error" ; exit 1 ; fi
 
+# percent-decoding failing
+OUT=$(printf "%s\r\n" "gemini://host.name/percent%25-encode%3.gmi" | ../vger -d var/gemini/ | tee /dev/stderr | MD5)
+if ! [ $OUT = "c782da4173898f57033a0804b8e96fc3" ] ; then echo "error" ; exit 1 ; fi
+
 # must fail only on OpenBSD !
 # try to escape from unveil
 if [ -f /bsd ]
