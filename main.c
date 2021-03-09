@@ -27,12 +27,14 @@
  */
 #define GEMINI_REQUEST_MAX 1025
 
+int virtualhost;
 
 void        autoindex(const char *);
 void        cgi(const char *cgicmd);
 void 		display_file(const char *);
 void 		status(const int, const char *);
 void		status_redirect(const int, const char *);
+void		status_error(const int, const char*);
 void 		drop_privileges(const char *, const char *);
 int         uridecode(char *);
 
@@ -129,16 +131,14 @@ drop_privileges(const char *user, const char *path)
 
 		eunveil(cgifullpath, "rx");
 	}
-	/* forbid more unveil */
-	eunveil(NULL, NULL);
 
 	/*
 	 * prevent system calls other parsing queryfor fread file and
 	 * write to stdio
 	 */
 	if (strlen(cgibin) > 0) {
-		/* cgi need execlp() (exec) and fork() (proc) */
-		epledge("stdio rpath exec proc", NULL);
+		/* cgi need execlp() (exec) */
+		epledge("stdio rpath exec", NULL);
 	} else {
 		epledge("stdio rpath", NULL);
 	}
@@ -157,6 +157,13 @@ status_redirect(const int code, const char *url)
 {
 	printf("%i %s\r\n",
 	       code, url);
+}
+
+void
+status_error(const int code, const char *reason)
+{
+	printf("%i %s\r\n",
+		code, reason);
 }
 
 void
@@ -190,7 +197,9 @@ display_file(const char *uri)
 	if (S_ISDIR(sb.st_mode) != 0) {
 		if (fp[strlen(fp) -1 ] != '/') {
 			/* no ending "/", redirect to "path/" */
-			estrlcpy(tmp, uri,  sizeof(tmp));
+			if (virtualhost)
+				estrlcat(tmp, "gemini://", sizeof(tmp));
+			estrlcat(tmp, uri,  sizeof(tmp));
 			estrlcat(tmp, "/", sizeof(tmp));
 			status_redirect(31, tmp);
 			return;
@@ -229,7 +238,7 @@ display_file(const char *uri)
 
 err:
 	/* return an error code and no content */
-	status(51, "text/gemini");
+	status_error(51, "file not found");
 	syslog(LOG_DAEMON, "path invalid %s", fp);
 	goto closefd;
 
@@ -255,10 +264,7 @@ autoindex(const char *path)
 	char *pos = NULL;
 	struct dirent **namelist; /* this must be freed at last */
 
-
 	syslog(LOG_DAEMON, "autoindex: %s", path);
-
-	status(20, "text/gemini");
 
 	/* display link to parent */
 	char parent[PATH_MAX] = {'\0'};
@@ -273,13 +279,14 @@ autoindex(const char *path)
 	if (pos != NULL) {
 		pos[1] = '\0'; /* at worse, parent is now "/" */
 	}
-	printf("=> %s ../\n", parent);
 
 	/* use alphasort to always have the same order on every system */
 	if ((n = scandir(path, &namelist, NULL, alphasort)) < 0) {
-		status(51, "text/gemini");
+		status_error(50, "Internal server error");
 		errlog("Can't scan %s", path);
 	} else {
+		status(20, "text/gemini");
+		printf("=> %s ../\n", parent);
 		for(int j = 0; j < n; j++) {
 			/* skip self and parent */
 			if ((strcmp(namelist[j]->d_name, ".") == 0) ||
@@ -301,58 +308,11 @@ autoindex(const char *path)
 void
 cgi(const char *cgicmd)
 {
-
-	int pipedes[2] = {0};
-	pid_t pid;
-
-	/* get a pipe to get stdout */
-	if (pipe(pipedes) != 0) {
-		status(42, "text/gemini");
-		err(1, "pipe failed");
-	}
-
-	pid = fork();
-
-	if (pid < 0) {
-		close(pipedes[0]);
-		close(pipedes[1]);
-		status(42, "text/gemini");
-		err(1, "fork failed");
-	}
-
-	if (pid > 0) { /* parent */
-		char buf[3];
-		size_t nread = 0;
-		FILE *output = NULL;
-
-		close(pipedes[1]); /* make sure entry is closed so fread() gets EOF */
-
-		/* use fread/fwrite because are buffered */
-		output = fdopen(pipedes[0], "r");
-		if (output == NULL) {
-			status(42, "text/gemini");
-			err(1, "fdopen failed");
-		}
-
-		/* read pipe output */
-		while ((nread = fread(buf, 1, sizeof(buf), output)) != 0) {
-			fwrite(buf, 1, nread, stdout);
-		}
-		close(pipedes[0]);
-		fclose(output);
-
-		wait(NULL); /* wait for child to terminate */
-
-		exit(0);
-
-	} else if (pid == 0) { /* child */
-		dup2(pipedes[1], STDOUT_FILENO); /* set pipe output equal to stdout */
-		close(pipedes[1]); /* no need this file descriptor : it is now stdout */
-		execlp(cgicmd, cgicmd, NULL);
-		/* if execlp is ok, this will never be reached */
-		status(42, "text/gemini");
-		errlog("error when trying to execlp %s", cgicmd);
-	}
+	execlp(cgicmd, cgicmd, NULL);
+	/* if execlp is ok, this will never be reached */
+	status(42, "Couldn't execute CGI script");
+	errlog("error when trying to execlp %s", cgicmd);
+	exit(1);
 }
 
 int
@@ -363,7 +323,6 @@ main(int argc, char **argv)
 	char 		uri      [PATH_MAX]           = {'\0'};
 	char 		user     [_SC_LOGIN_NAME_MAX] = "";
 	char        query[PATH_MAX]               = {'\0'};
-	int 		virtualhost = 0;
 	int 		option = 0;
 	char        *pos = NULL;
 
