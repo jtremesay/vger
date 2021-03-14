@@ -25,11 +25,12 @@ For all supported OS, it's possible to run **Vger** in a chroot and drop privile
 ```
 git clone https://tildegit.org/solene/vger.git
 cd vger
+./configure (only really useful for Linux)
 make
 doas make install
 ```
 
-On GNU/Linux, make sure you installed `libbsd`.
+On GNU/Linux, make sure you installed `libbsd`, it has been reported that using clang was required too.
 
 # Running tests
 

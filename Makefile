@@ -1,6 +1,8 @@
+include config.mk
+
 PREFIX?=/usr/local/
 CFLAGS  += -pedantic -Wall -Wextra -Wmissing-prototypes \
-           -Wstrict-prototypes -Wwrite-strings
+           -Wstrict-prototypes -Wwrite-strings ${EXTRAFLAGS}
 
 .SUFFIXES: .c .o
 

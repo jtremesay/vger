@@ -3,11 +3,16 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <syslog.h>
 #include <unistd.h>
 
 #include "utils.h"
+
+#ifdef __OpenBSD__
+#include <string.h>
+#else
+#include <bsd/string.h>
+#endif
 
 #ifdef __OpenBSD__
 void
