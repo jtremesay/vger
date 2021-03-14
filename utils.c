@@ -8,7 +8,7 @@
 
 #include "utils.h"
 
-#ifdef __OpenBSD__
+#if defined(__OpenBSD__) || defined(__FreeBSD__) || defined( _NetBSD__) || defined(__DragonFly__)
 #include <string.h>
 #else
 #include <bsd/string.h>
