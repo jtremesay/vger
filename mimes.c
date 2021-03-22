@@ -5,6 +5,7 @@
 #include "mimes.h"
 #include "opts.h"
 
+/* extension to mimetype table */
 static const struct {
 	const char	*extension;
 	const char	*type;
@@ -124,6 +125,7 @@ get_file_mime(const char *path, const char *default_mime)
 	size_t	 i;
 	char	*extension;
 
+	/* search for extension after last '.' in path */
 	if ((extension = strrchr(path, '.')) == NULL)
 		goto out;
 

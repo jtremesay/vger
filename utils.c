@@ -14,6 +14,12 @@
 #include <bsd/string.h>
 #endif
 
+/* e*foo() functions are the equivalent of foo() but handle errors.
+ * In case an error happens:
+ * The error is printed to stdout
+ * return 1
+ */
+
 #ifdef __OpenBSD__
 void
 eunveil(const char *path, const char *permissions)
@@ -70,6 +76,7 @@ esetenv(const char *name, const char *value, int overwrite)
 	return ret;
 }
 
+/* send error in syslog, to stdout and die */
 void
 errlog(const char *format, ...)
 {

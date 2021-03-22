@@ -44,16 +44,13 @@ will read the file /var/gemini/hostname.example/file.gmi
 .It Op Fl c
 Enable CGI support.
 .Ar cgi_path
-will be executed as a cgi script instead of returning its content.
-This path is relative to the directory set with
-.Fl d
-flag. If using virtualhost, you must insert the virtualhost directory in the cgi path.
+files will be executed as a cgi script instead of returning their content.
+.Ar cgi_path must not end with '/'.
+If using virtualhost, you must insert the virtualhost directory in the cgi path.
 As example, for a request gemini://hostname.example/cgi-bin/hello.cgi, one must set:
 .Bd -literal -offset indent
-vger -c /cgi-bin/hello.cgi
+vger -c /var/gemini/hostname.example/cgi-bin/hello.cgi
 .Ed
-.Pp
-Note you can define a directory instead of a single file.
 .Pp
 In this case,
 .Xr pledge 2

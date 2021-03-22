@@ -20,23 +20,46 @@
 #include "opts.h"
 #include "utils.h"
 
+/* lenght of "gemini://" */
 #define GEMINI_PART	 9
-/* 2014 + 1
- * see https://gemini.circumlunar.space/docs/specification.html.
+
+/* 
+ * number of bytes to read with fgets() : 2014 + 1
  * fgets() reads at most size-1 (1024 here)
+ * see https://gemini.circumlunar.space/docs/specification.html.
  */
 #define GEMINI_REQUEST_MAX 1025
-
-int virtualhost;
 
 void        autoindex(const char *);
 void        cgi(const char *cgicmd);
 void 		display_file(const char *);
+void 		drop_privileges(const char *, const char *);
+void        echdir(const char *);
 void 		status(const int, const char *);
 void		status_redirect(const int, const char *);
 void		status_error(const int, const char*);
-void 		drop_privileges(const char *, const char *);
 int         uridecode(char *);
+
+
+void
+echdir(const char *path)
+{
+	if (chdir(path) == -1) {
+		switch (errno) {
+		case ENOTDIR: /* FALLTHROUGH */
+		case ENOENT:
+			status_error(51, "file not found");
+			break;
+		case EACCES:
+			status_error(50, "Forbidden path");
+			break;
+		default:
+			status_error(50, "Internal server error");
+			break;
+		}
+		errlog("failed to chdir(%s)", path);
+	}
+}
 
 int
 uridecode(char *uri)
@@ -78,7 +101,6 @@ void
 drop_privileges(const char *user, const char *path)
 {
 	struct passwd  *pw;
-	int    chrooted = 0;
 
 	/*
 	 * use chroot() if an user is specified requires root user to be
@@ -99,9 +121,7 @@ drop_privileges(const char *user, const char *path)
 			errlog("the chroot_dir %s can't be used for chroot", path);
 		}
 		chrooted = 1;
-		if (chdir("/") == -1) {
-			errlog("failed to chdir(\"/\")");
-		}
+		echdir("/");
 		/* drop privileges */
 		if (setgroups(1, &pw->pw_gid) ||
 		    setresgid(pw->pw_gid, pw->pw_gid, pw->pw_gid) ||
@@ -110,8 +130,6 @@ drop_privileges(const char *user, const char *path)
 			       user, pw->pw_uid);
 		}
 
-		/* base directory is now / */
-                estrlcpy(chroot_dir, "/", sizeof(chroot_dir));
 	}
 #ifdef __OpenBSD__
 	/*
@@ -122,25 +140,17 @@ drop_privileges(const char *user, const char *path)
 	} else {
 		eunveil(path, "r");
 	}
-	/* permission to execute what's inside cgipath */
-	if (strlen(cgibin) > 0) {
-		/* first, build the full path of cgi (not in chroot) */
-		char cgifullpath[PATH_MAX] = {'\0'};
-		estrlcpy(cgifullpath, path, sizeof(cgifullpath));
-		estrlcat(cgifullpath, cgibin, sizeof(cgifullpath));
-
-		eunveil(cgifullpath, "rx");
+	/* permission to execute what's inside cgidir */
+	if (strlen(cgidir) > 0) {
+		eunveil(cgidir, "rx");
 	}
+	eunveil(NULL,NULL); /* no more call to unveil() */
 
-	/*
-	 * prevent system calls other parsing queryfor fread file and
-	 * write to stdio
-	 */
-	if (strlen(cgibin) > 0) {
-		/* cgi need execlp() (exec) */
+	/* promise permissions */
+	if (strlen(cgidir) > 0) {
 		epledge("stdio rpath exec", NULL);
 	} else {
-		epledge("stdio rpath", NULL);
+		epledge("stdio rpath unveil", NULL);
 	}
 #endif
 }
@@ -148,8 +158,11 @@ drop_privileges(const char *user, const char *path)
 void
 status(const int code, const char *file_mime)
 {
-	printf("%i %s; %s\r\n",
-	       code, file_mime, lang);
+	if (strcmp(file_mime, "text/gemini") == 0) {
+		printf("%i %s; %s\r\n", code, file_mime, lang);
+	} else {
+		printf("%i %s\r\n", code, file_mime);
+	}
 }
 
 void
@@ -167,7 +180,7 @@ status_error(const int code, const char *reason)
 }
 
 void
-display_file(const char *uri)
+display_file(const char *fname)
 {
 	FILE		*fd = NULL;
 	struct stat	 sb = {0};
@@ -175,19 +188,28 @@ display_file(const char *uri)
 	const char	*file_mime;
 	char		*buffer[BUFSIZ];
 	char		target[FILENAME_MAX] = {'\0'};
-	char		fp[PATH_MAX] = {'\0'};
 	char        tmp[PATH_MAX] = {'\0'}; /* used to build temporary path */
 
-	/* build file path inside chroot */
-	estrlcpy(fp, chroot_dir, sizeof(fp));
-	estrlcat(fp, uri, sizeof(fp));
+	/* special case : fname empty. The user requested just the directory name */
+	if (strlen(fname) == 0) {
+		if (stat("index.gmi", &sb) == 0) {
+			/* there is index.gmi in the current directory */
+			display_file("index.gmi");
+			return;
+		} else if (doautoidx) {
+			/* no index.gmi, so display autoindex if enabled */
+			autoindex(".");
+			return;
+		} else {
+			goto err;
+		}
+	}
 
 	/* this is to check if path exists and obtain metadata later */
-	if (stat(fp, &sb) == -1) {
-
-		/* check if fp is a symbolic link
+	if (stat(fname, &sb) == -1) {
+		/* check if fname is a symbolic link
 		 * if so, redirect using its target */
-		if (lstat(fp, &sb) != -1 && S_ISLNK(sb.st_mode) == 1)
+		if (lstat(fname, &sb) != -1 && S_ISLNK(sb.st_mode) == 1)
 		goto redirect;
 		else
 		goto err;
@@ -195,61 +217,42 @@ display_file(const char *uri)
 
 	/* check if directory */
 	if (S_ISDIR(sb.st_mode) != 0) {
-		if (fp[strlen(fp) -1 ] != '/') {
-			/* no ending "/", redirect to "path/" */
-			if (virtualhost)
-				estrlcat(tmp, "gemini://", sizeof(tmp));
-			estrlcat(tmp, uri,  sizeof(tmp));
-			estrlcat(tmp, "/", sizeof(tmp));
-			status_redirect(31, tmp);
-			return;
-
-		} else {
-			/* there is a leading "/", display index.gmi */
-			estrlcpy(tmp, fp, sizeof(tmp));
-			estrlcat(tmp, "index.gmi", sizeof(tmp));
-
-			/* check if index.gmi exists or show autoindex */
-			if (stat(tmp, &sb) == 0) {
-				estrlcpy(fp, tmp, sizeof(fp));
-			} else if (doautoidx != 0) {
-				autoindex(fp);
-				return;
-			} else {
-				goto err;
-			}
-		}
+		/* no ending "/", redirect to "fname/" */
+		estrlcpy(tmp, fname, sizeof(tmp));
+		estrlcat(tmp, "/", sizeof(tmp));
+		status_redirect(31, tmp);
+		return;
 	}
 
 	/* open the file requested */
-	if ((fd = fopen(fp, "r")) == NULL) { goto err; }
+	if ((fd = fopen(fname, "r")) == NULL) { goto err; }
 
-	file_mime = get_file_mime(fp, default_mime);
+	file_mime = get_file_mime(fname, default_mime);
 
 	status(20, file_mime);
 
 	/* read the file byte after byte in buffer and write it to stdout */
 	while ((nread = fread(buffer, 1, sizeof(buffer), fd)) != 0)
 		fwrite(buffer, 1, nread, stdout);
-	goto closefd;
-	syslog(LOG_DAEMON, "path served %s", fp);
+	goto closefd; /* close file descriptor */
+	syslog(LOG_DAEMON, "path served %s", fname);
 
 	return;
 
 err:
 	/* return an error code and no content */
 	status_error(51, "file not found");
-	syslog(LOG_DAEMON, "path invalid %s", fp);
+	syslog(LOG_DAEMON, "path invalid %s", fname);
 	goto closefd;
 
 redirect:
 	/* read symbolic link target to redirect */
-	if (readlink(fp, target, FILENAME_MAX) == -1) {
+	if (readlink(fname, target, FILENAME_MAX) == -1) {
 		goto err;
 	}
 
 	status_redirect(30, target);
-	syslog(LOG_DAEMON, "redirection from %s to %s", fp, target);
+	syslog(LOG_DAEMON, "redirection from %s to %s", fname, target);
 
 closefd:
 	if (S_ISREG(sb.st_mode) != 0) {
@@ -260,25 +263,12 @@ closefd:
 void
 autoindex(const char *path)
 {
+	/* display liks to files in path + a link to parent (..) */
+
 	int n = 0;
-	char *pos = NULL;
 	struct dirent **namelist; /* this must be freed at last */
 
 	syslog(LOG_DAEMON, "autoindex: %s", path);
-
-	/* display link to parent */
-	char parent[PATH_MAX] = {'\0'};
-	/* parent is "path" without chroot_dir */
-	estrlcpy(parent, path+strlen(chroot_dir), sizeof(parent));
-	/* remove ending '/' */
-	while (parent[strlen(parent)-1] == '/') {
-		parent[strlen(parent)-1] = '\0';
-	}
-	/* remove last part after '/' */
-	pos = strrchr(parent, '/');
-	if (pos != NULL) {
-		pos[1] = '\0'; /* at worse, parent is now "/" */
-	}
 
 	/* use alphasort to always have the same order on every system */
 	if ((n = scandir(path, &namelist, NULL, alphasort)) < 0) {
@@ -286,7 +276,7 @@ autoindex(const char *path)
 		errlog("Can't scan %s", path);
 	} else {
 		status(20, "text/gemini");
-		printf("=> %s ../\n", parent);
+		printf("=> .. ../\n"); /* display link to parent */
 		for(int j = 0; j < n; j++) {
 			/* skip self and parent */
 			if ((strcmp(namelist[j]->d_name, ".") == 0) ||
@@ -308,6 +298,7 @@ autoindex(const char *path)
 void
 cgi(const char *cgicmd)
 {
+	/* run cgicmd replacing current process */
 	execlp(cgicmd, cgicmd, NULL);
 	/* if execlp is ok, this will never be reached */
 	status(42, "Couldn't execute CGI script");
@@ -318,13 +309,27 @@ cgi(const char *cgicmd)
 int
 main(int argc, char **argv)
 {
-	char 		request  [GEMINI_REQUEST_MAX] = {'\0'};
-	char 		hostname [GEMINI_REQUEST_MAX] = {'\0'};
-	char 		uri      [PATH_MAX]           = {'\0'};
-	char 		user     [_SC_LOGIN_NAME_MAX] = "";
-	char        query[PATH_MAX]               = {'\0'};
-	int 		option = 0;
-	char        *pos = NULL;
+	char 		request   [GEMINI_REQUEST_MAX] = {'\0'};
+	char 		user      [_SC_LOGIN_NAME_MAX] = "";
+	char 		hostname  [GEMINI_REQUEST_MAX] = {'\0'};
+	char        query     [PATH_MAX]           = {'\0'};
+	char        chroot_dir[PATH_MAX]           = DEFAULT_CHROOT;
+	char        file      [FILENAME_MAX]       = DEFAULT_INDEX;
+	char        dir       [PATH_MAX]           = {'\0'};
+	char        *pos                           = NULL;
+	int 		option                         = 0;
+	int         virtualhost                    = 0;
+	int         docgi                          = 0;
+
+	/*
+     * request : contain the whole request from client : gemini://...\r\n
+	 * user : username, used in drop_privileges()
+	 * hostname : extracted from hostname. used with virtualhosts and cgi SERVER_NAME
+	 * query : file requested in cgi : gemini://...?query
+	 * file : file basename to display. Emtpy is a directory has been requested
+	 * dir : directory requested. vger will chdir() in to find file
+	 * pos : used to parse request and split into interesting parts
+	 */
 
 	while ((option = getopt(argc, argv, ":d:l:m:u:c:vi")) != -1) {
 		switch (option) {
@@ -342,7 +347,8 @@ main(int argc, char **argv)
 			estrlcpy(user, optarg, sizeof(user));
 			break;
 		case 'c':
-			estrlcpy(cgibin, optarg, sizeof(cgibin));
+			estrlcpy(cgidir, optarg, sizeof(cgidir));
+			docgi = 1;
 			break;
 		case 'v':
 			virtualhost = 1;
@@ -354,13 +360,14 @@ main(int argc, char **argv)
 	}
 
 	/*
-	 * do chroot if an user is supplied run pledge/unveil if OpenBSD
+	 * do chroot if an user is supplied
 	 */
 	drop_privileges(user, chroot_dir);
 
 	/*
 	 * read 1024 chars from stdin
 	 * to get the request
+	 * (actually 1024 + \0)
 	 */
 	if (fgets(request, GEMINI_REQUEST_MAX, stdin) == NULL) {
 		/* EOF reached before reading anything */
@@ -405,67 +412,90 @@ main(int argc, char **argv)
 		memmove(request, pos+3, strlen(pos) +1 - 3); /* "/.." = 3 */
 	}
 
-	/*
-	 * look for the first / after the hostname
-	 * in order to split hostname and uri
-	 */
-	pos = strchr(request, '/');
+	echdir(chroot_dir); /* move to chroot */
 
+	/* look for hostname in request : first thing before first / if any */
+	pos = strchr(request, '/');
 	if (pos != NULL) {
-		/* if there is a / found */
-		/* separate hostname and uri */
-		estrlcpy(uri, pos, strlen(pos)+1);
-		/* just keep hostname in request */
+		/* copy what's after hostname in dir */
+		estrlcpy(dir, pos, strlen(pos)+1);
+		/* just keep hostname in request : stop the string with \0 */
 		pos[0] = '\0';
 	}
-	/* check if client added :port at end of request */
+
+	/* check if client added :port at end of hostname and remove it */
 	pos = strchr(request, ':');
 	if (pos != NULL) {
-	/* end string at :*/
-	pos[0] = '\0';
+		/* end string at :*/
+		pos[0] = '\0';
 	}
+
 	/* copy hostname from request */
 	estrlcpy(hostname, request, sizeof(hostname));
 
-	/* look for "?" if any to set query for cgi, or remove it*/
-	pos = strchr(uri, '?');
-	if (pos != NULL) {
-		estrlcpy(query, pos+1, sizeof(query));
-		esetenv("QUERY_STRING", query, 1);
-		pos[0] = '\0';
+	/* remove leading '/' in dir */
+	while (dir[0] == '/') {
+		memmove(dir, dir+1, strlen(dir+1)+1);
 	}
 
-	/*
-	 * if virtualhost feature is actived looking under the chroot_path +
-	 * hostname directory gemini://foobar/hello will look for
-	 * chroot_path/foobar/hello
-	 */
 	if (virtualhost) {
-		if (strlen(uri) == 0) {
-			estrlcpy(uri, "/index.gmi", sizeof(uri));
-		}
+		/* add hostname at the beginning of the dir path */
 		char tmp[PATH_MAX] = {'\0'};
 		estrlcpy(tmp, hostname, sizeof(tmp));
-		estrlcat(tmp, uri, sizeof(tmp));
-		estrlcpy(uri, tmp, sizeof(uri));
+		estrlcat(tmp, "/", sizeof(tmp));
+		estrlcat(tmp, dir, sizeof(tmp));
+		estrlcpy(dir, tmp, sizeof(dir));
 	}
 
-	/* check if uri is cgibin */
-	if ((strlen(cgibin) > 0) &&
-		(strncmp(uri, cgibin, strlen(cgibin)) == 0)) {
+	/* percent decode */
+	uridecode(dir);
 
-		/* cgipath with chroot_dir at the beginning */
-		char cgipath[PATH_MAX] = {'\0'};
-		estrlcpy(cgipath, chroot_dir, sizeof(cgipath));
-		estrlcat(cgipath, uri, sizeof(cgipath));
+	/* 
+	 * split dir and filename.
+	 * file is last part after last '/'.
+	 * if none found, then requested file is actually a directory
+	 */
+	if (strlen(dir) > 0) {
+		pos = strrchr(dir, '/');
+		if (pos != NULL) {
+			estrlcpy(file, pos+1, sizeof(file)); /* +1 : no leading '/' */
+			pos[0] = '\0';
+			if (strlen(dir) > 0) {
+				echdir(dir); /* change directory to requested directory */
+			}
+		} else {
+			estrlcpy(file, dir, sizeof(file));
+		}
+	}
+
+	if (docgi) {
+		/* check if directory is cgidir */
+		char cgifp[PATH_MAX] = {'\0'};
+		estrlcpy(cgifp, chroot_dir, sizeof(chroot_dir));
+		if (cgifp[strlen(cgifp)-1] != '/') {
+			estrlcat(cgifp, "/", sizeof(chroot_dir));
+		}
+		estrlcat(cgifp, dir, sizeof(chroot_dir));
+		if (strcmp(cgifp, cgidir) != 0) {
+			/* not cgipath, display file content */
+			goto file_to_stdout;
+		}
 		/* set env variables for CGI */
 		/* see https://lists.orbitalfox.eu/archives/gemini/2020/000315.html */
 		esetenv("GATEWAY_INTERFACE", "CGI/1.1", 1);
 		esetenv("SERVER_PROTOCOL", "GEMINI", 1);
 		esetenv("SERVER_SOFTWARE", "vger/1", 1);
 
+		/* look for "?" if any to set query for cgi, remove it*/
+		pos = strchr(file, '?');
+		if (pos != NULL) {
+			estrlcpy(query, pos+1, sizeof(query));
+			esetenv("QUERY_STRING", query, 1);
+			pos[0] = '\0';
+		}
+
 		/* look for an extension to find PATH_INFO */
-		pos = strrchr(cgipath, '.');
+		pos = strrchr(file, '.');
 		if (pos != NULL) {
 			/* found a dot */
 			pos = strchr(pos, '/');
@@ -474,16 +504,16 @@ main(int argc, char **argv)
 				pos[0] = '\0'; /* keep only script name */
 			}
 		}
-		esetenv("SCRIPT_NAME", cgipath, 1);
+		esetenv("SCRIPT_NAME", file, 1);
 		esetenv("SERVER_NAME", hostname, 1);
 
-		cgi(cgipath);
-
-	} else {
-		uridecode(uri);
-		/* open file and send it to stdout */
-		display_file(uri);
+		cgi(file);
+		return 0;
 	}
+
+file_to_stdout:
+	/* regular file  to stdout */
+	display_file(file);
 
 	return (0);
 }
