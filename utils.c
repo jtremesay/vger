@@ -83,6 +83,8 @@ errlog(const char *format, ...)
 	char e[1024] = {'\0'};
     va_list ap;
 
+    fflush(stdout); /* make sure older messages are printed */
+
     va_start(ap, format);
     vsnprintf(e, sizeof(e), format, ap);
     va_end(ap);
