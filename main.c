@@ -150,7 +150,7 @@ drop_privileges(const char *user, const char *path)
 	if (strlen(cgidir) > 0) {
 		epledge("stdio rpath exec", NULL);
 	} else {
-		epledge("stdio rpath unveil", NULL);
+		epledge("stdio rpath", NULL);
 	}
 #endif
 }
@@ -299,10 +299,10 @@ void
 cgi(const char *cgicmd)
 {
 	/* run cgicmd replacing current process */
-	execlp(cgicmd, cgicmd, NULL);
-	/* if execlp is ok, this will never be reached */
+	execl(cgicmd, cgicmd, NULL);
+	/* if execl is ok, this will never be reached */
 	status(42, "Couldn't execute CGI script");
-	errlog("error when trying to execlp %s", cgicmd);
+	errlog("error when trying to execl %s", cgicmd);
 	exit(1);
 }
 
@@ -471,11 +471,11 @@ main(int argc, char **argv)
 	if (docgi) {
 		/* check if directory is cgidir */
 		char cgifp[PATH_MAX] = {'\0'};
-		estrlcpy(cgifp, chroot_dir, sizeof(chroot_dir));
+		estrlcpy(cgifp, chroot_dir, sizeof(cgifp));
 		if (cgifp[strlen(cgifp)-1] != '/') {
-			estrlcat(cgifp, "/", sizeof(chroot_dir));
+			estrlcat(cgifp, "/", sizeof(cgifp));
 		}
-		estrlcat(cgifp, dir, sizeof(chroot_dir));
+		estrlcat(cgifp, dir, sizeof(cgifp));
 		if (strcmp(cgifp, cgidir) != 0) {
 			/* not cgipath, display file content */
 			goto file_to_stdout;
